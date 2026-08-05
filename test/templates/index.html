@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机器人焊接监控仪表盘</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card-bg: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-muted: #8b949e;
+    --green: #3fb950;
+    --yellow: #d2991d;
+    --red: #f85149;
+    --blue: #58a6ff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    min-height: 100vh;
+    padding: 16px;
+  }
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header .dot {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--green); margin-right: 6px;
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+  .grid { display: grid; gap: 14px; }
+  /* 桌面：4列 */
+  @media (min-width: 1200px) {
+    .grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .chart-row { grid-column: span 4; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  }
+  /* 平板：2列 */
+  @media (min-width: 768px) and (max-width: 1199px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+    .chart-row { grid-column: span 2; display: grid; grid-template-columns: 1fr; gap: 14px; }
+  }
+  /* 手机：1列 */
+  @media (max-width: 767px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .card .title {
+    font-size: 13px; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 8px;
+  }
+  .kpi { font-size: 36px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .kpi.unit::after { font-size: 16px; font-weight: 400; color: var(--text-muted); margin-left: 4px; }
+  .kpi.temp::after { content: '°C'; }
+  .kpi.humi::after { content: '%'; }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 600; margin-right: 6px;
+  }
+  .badge.normal { background: #1a3a1a; color: var(--green); }
+  .badge.suspicious { background: #3a2e0a; color: var(--yellow); }
+  .badge.anomaly { background: #3a1010; color: var(--red); }
+  .chart-box { width: 100%; height: 320px; }
+  .alert-list { max-height: 200px; overflow-y: auto; font-size: 13px; }
+  .alert-item {
+    padding: 6px 0; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .alert-item:last-child { border-bottom: none; }
+  .alert-item .time { color: var(--text-muted); font-size: 12px; margin-right: 8px; white-space: nowrap; }
+  .alert-item .msg { flex: 1; }
+  .status-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .status-item { flex: 1; min-width: 80px; text-align: center; }
+  .status-light {
+    display: inline-block; width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--border); margin-bottom: 4px;
+  }
+  .status-light.on { background: var(--green); border-color: var(--green); box-shadow: 0 0 8px var(--green); }
+  .status-light.off { background: transparent; }
+  .status-light.warn { background: var(--yellow); border-color: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+  .status-light.error { background: var(--red); border-color: var(--red); box-shadow: 0 0 8px var(--red); }
+  .status-label { font-size: 11px; color: var(--text-muted); }
+  .fps { font-size: 13px; color: var(--text-muted); }
+  .fps span { color: var(--text); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>
+    <span class="dot"></span>
+    机器人激光焊接 · 实时监控
+  </h1>
+  <div class="fps">
+    数据频率 <span id="fps_val">--</span> FPS &nbsp;|&nbsp;
+    客户端 <span id="client_count">1</span>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- KPI 卡：温度 -->
+  <div class="card">
+    <div class="title">🌡 实时温度</div>
+    <div class="kpi temp" id="kpi_temp">--</div>
+    <div style="margin-top:6px;">
+      <span class="badge" id="temp_quality">--</span>
+    </div>
+  </div>
+
+  <!-- KPI 卡：湿度 -->
+  <div class="card">
+    <div class="title">💧 实时湿度</div>
+    <div class="kpi humi" id="kpi_humi">--</div>
+    <div style="margin-top:6px;">
+      <span class="badge" id="humi_quality">--</span>
+    </div>
+  </div>
+
+  <!-- KPI 卡：质量分数 -->
+  <div class="card">
+    <div class="title">✅ 质量评分</div>
+    <div class="kpi" id="kpi_score" style="color:var(--green);">--</div>
+    <div style="margin-top:6px;font-size:13px;color:var(--text-muted);" id="kpi_flags"></div>
+  </div>
+
+  <!-- 状态指示 -->
+  <div class="card">
+    <div class="title">📡 设备状态</div>
+    <div class="status-row">
+      <div class="status-item">
+        <div class="status-light off" id="light_running"></div>
+        <div class="status-label">运行中</div>
+      </div>
+      <div class="status-item">
+        <div class="status-light off" id="light_emergency"></div>
+        <div class="status-label">急停</div>
+      </div>
+      <div class="status-item">
+        <div class="status-light off" id="light_fault"></div>
+        <div class="status-label">故障</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图表行 -->
+  <div class="chart-row">
+    <div class="card">
+      <div class="title">📈 温度趋势（最近 200 点）</div>
+      <div class="chart-box" id="chart_temp"></div>
+    </div>
+    <div class="card">
+      <div class="title">📈 湿度趋势（最近 200 点）</div>
+      <div class="chart-box" id="chart_humi"></div>
+    </div>
+  </div>
+
+  <!-- 质量饼图 + 异常告警 -->
+  <div class="card" style="grid-column: span 1;">
+    <div class="title">🥧 数据质量分布</div>
+    <div class="chart-box" id="chart_quality" style="height:240px;"></div>
+  </div>
+  <div class="card" style="grid-column: span 3;">
+    <div class="title">🚨 异常告警（最近 50 条）</div>
+    <div class="alert-list" id="alert_list">
+      <div style="color:var(--text-muted);padding:20px;text-align:center;">暂无告警</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// 全局状态
+// ============================================================
+const MAX_POINTS = 200;
+const history = {
+  timestamps: [],
+  temperatures: [],
+  humidities: [],
+  scores: [],
+  qualities: [],
+};
+const alerts = [];
+let latestDp = null;
+let normalCount = 0, suspiciousCount = 0, anomalyCount = 0;
+
+// ============================================================
+// ECharts 初始化
+// ============================================================
+const chartTemp = echarts.init(document.getElementById('chart_temp'));
+const chartHumi = echarts.init(document.getElementById('chart_humi'));
+const chartQuality = echarts.init(document.getElementById('chart_quality'));
+
+const darkTheme = {
+  textStyle: { color: '#8b949e' },
+  grid: { top: 20, right: 50, bottom: 30, left: 55 },
+  xAxis: {
+    type: 'category',
+    axisLine: { lineStyle: { color: '#30363d' } },
+    axisTick: { show: false },
+    axisLabel: { color: '#8b949e', fontSize: 11 },
+    splitLine: { show: false },
+  },
+  yAxis: {
+    type: 'value',
+    axisLine: { show: false },
+    axisTick: { show: false },
+    axisLabel: { color: '#8b949e', fontSize: 11 },
+    splitLine: { lineStyle: { color: '#21262d' } },
+  },
+  tooltip: {
+    trigger: 'axis',
+    backgroundColor: '#161b22',
+    borderColor: '#30363d',
+    textStyle: { color: '#c9d1d9', fontSize: 12 },
+  },
+  animation: true,
+  animationDuration: 200,
+};
+
+function makeLineOpt(title, yName, color, data, markAreas = []) {
+  return {
+    ...darkTheme,
+    series: [{
+      name: title,
+      type: 'line',
+      data: data,
+      smooth: true,
+      symbol: 'none',
+      lineStyle: { color: color, width: 2 },
+      areaStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: color + '40' },
+          { offset: 1, color: color + '05' },
+        ]),
+      },
+      markArea: markAreas.length ? {
+        silent: true,
+        data: markAreas,
+        itemStyle: { color: 'rgba(248,81,73,0.08)' },
+      } : undefined,
+    }],
+  };
+}
+
+// 质量饼图
+const pieOpt = {
+  backgroundColor: 'transparent',
+  tooltip: {
+    trigger: 'item',
+    backgroundColor: '#161b22',
+    borderColor: '#30363d',
+    textStyle: { color: '#c9d1d9', fontSize: 12 },
+  },
+  series: [{
+    type: 'pie',
+    radius: ['55%', '80%'],
+    center: ['50%', '50%'],
+    avoidLabelOverlap: false,
+    itemStyle: { borderRadius: 4, borderColor: '#161b22', borderWidth: 3 },
+    label: { show: false },
+    emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
+    data: [
+      { value: 0, name: '正常', itemStyle: { color: '#3fb950' } },
+      { value: 0, name: '可疑', itemStyle: { color: '#d2991d' } },
+      { value: 0, name: '异常', itemStyle: { color: '#f85149' } },
+    ],
+  }],
+};
+
+chartQuality.setOption(pieOpt);
+
+// 响应式
+window.addEventListener('resize', () => {
+  chartTemp.resize();
+  chartHumi.resize();
+  chartQuality.resize();
+});
+
+// ============================================================
+// 更新 UI
+// ============================================================
+function updateKPIs(dp) {
+  const t = dp.data.temperature;
+  const h = dp.data.humidity;
+  const q = dp.quality;
+
+  document.getElementById('kpi_temp').textContent = t != null ? t.toFixed(1) : '--';
+  document.getElementById('kpi_humi').textContent = h != null ? h.toFixed(1) : '--';
+
+  if (q) {
+    const scoreEl = document.getElementById('kpi_score');
+    scoreEl.textContent = (q.score * 100).toFixed(0) + '%';
+    if (q.score >= 0.8) scoreEl.style.color = 'var(--green)';
+    else if (q.score >= 0.4) scoreEl.style.color = 'var(--yellow)';
+    else scoreEl.style.color = 'var(--red)';
+
+    document.getElementById('kpi_flags').textContent = q.flags.length
+      ? '⚠ ' + q.flags.join(', ')
+      : '无异常';
+
+    // 质量标签
+    const tq = document.getElementById('temp_quality');
+    tq.textContent = q.label;
+    tq.className = 'badge ' + q.label;
+    document.getElementById('humi_quality').textContent = q.label;
+    document.getElementById('humi_quality').className = 'badge ' + q.label;
+  }
+
+  // 状态灯
+  const d = dp.data;
+  setLight('light_running', d.is_running ? 'on' : 'off');
+  setLight('light_emergency', d.is_emergency ? 'error' : 'off');
+  setLight('light_fault', d.is_fault ? 'error' : 'off');
+}
+
+function setLight(id, state) {
+  const el = document.getElementById(id);
+  el.className = 'status-light ' + state;
+}
+
+function updateCharts() {
+  const ts = history.timestamps;
+  const labels = ts.map(t => {
+    const d = new Date(t * 1000);
+    return d.getHours().toString().padStart(2,'0') + ':'
+         + d.getMinutes().toString().padStart(2,'0') + ':'
+         + d.getSeconds().toString().padStart(2,'0');
+  });
+
+  // 温度异常区域
+  const tempMarkAreas = [];
+  for (let i = 0; i < history.qualities.length; i++) {
+    const q = history.qualities[i];
+    if (q && q.label === 'anomaly') {
+      tempMarkAreas.push([{ xAxis: labels[i] }, { xAxis: labels[i] }]);
+    }
+  }
+
+  chartTemp.setOption(makeLineOpt('温度', '°C', '#58a6ff', history.temperatures.map((v, i) => [labels[i], v]), tempMarkAreas), true);
+  chartHumi.setOption(makeLineOpt('湿度', '%', '#bc8cff', history.humidities.map((v, i) => [labels[i], v])), true);
+
+  // 质量饼图
+  const total = normalCount + suspiciousCount + anomalyCount || 1;
+  chartQuality.setOption({
+    series: [{
+      data: [
+        { value: normalCount, name: '正常' },
+        { value: suspiciousCount, name: '可疑' },
+        { value: anomalyCount, name: '异常' },
+      ],
+    }],
+  });
+}
+
+function addAlert(dp) {
+  const q = dp.quality;
+  if (!q || q.label === 'normal') return;
+
+  const d = new Date(dp.timestamp * 1000);
+  const timeStr = d.getHours().toString().padStart(2,'0') + ':'
+                + d.getMinutes().toString().padStart(2,'0') + ':'
+                + d.getSeconds().toString().padStart(2,'0');
+
+  alerts.unshift({
+    time: timeStr,
+    label: q.label,
+    score: q.score,
+    flags: q.flags,
+    temp: dp.data.temperature,
+    humi: dp.data.humidity,
+  });
+
+  if (alerts.length > 50) alerts.length = 50;
+
+  const container = document.getElementById('alert_list');
+  if (alerts.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">暂无告警</div>';
+    return;
+  }
+
+  container.innerHTML = alerts.map(a => `
+    <div class="alert-item">
+      <span class="time">${a.time}</span>
+      <span class="badge ${a.label}">${a.label}</span>
+      <span class="msg">
+        temp=${a.temp != null ? a.temp.toFixed(1) + '°C' : '--'},
+        humi=${a.humi != null ? a.humi.toFixed(1) + '%' : '--'}
+        ${a.flags.length ? ' | ' + a.flags.join(', ') : ''}
+      </span>
+      <span style="color:var(--text-muted);font-size:12px;">${(a.score*100).toFixed(0)}%</span>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// WebSocket
+// ============================================================
+let fpsCounter = 0;
+let fpsTimer = null;
+
+function connectWS() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${location.host}/ws`;
+  const ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    console.log('WebSocket 已连接');
+    document.querySelector('.dot').style.background = 'var(--green)';
+
+    // FPS 统计
+    fpsCounter = 0;
+    fpsTimer = setInterval(() => {
+      document.getElementById('fps_val').textContent = fpsCounter;
+      fpsCounter = 0;
+    }, 1000);
+  };
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+
+    if (msg.type === 'stats') {
+      document.getElementById('client_count').textContent = msg.data.clients;
+    }
+
+    if (msg.type === 'data') {
+      const batch = msg.data;
+      fpsCounter += batch.length;
+
+      for (const dp of batch) {
+        latestDp = dp;
+
+        // 更新历史
+        history.timestamps.push(dp.timestamp);
+        history.temperatures.push(dp.data.temperature);
+        history.humidities.push(dp.data.humidity);
+        history.scores.push(dp.quality?.score ?? 1.0);
+        history.qualities.push(dp.quality);
+
+        // 裁剪
+        while (history.timestamps.length > MAX_POINTS) {
+          history.timestamps.shift();
+          history.temperatures.shift();
+          history.humidities.shift();
+          history.scores.shift();
+          history.qualities.shift();
+        }
+
+        // 质量统计
+        if (dp.quality) {
+          if (dp.quality.label === 'normal') normalCount++;
+          else if (dp.quality.label === 'suspicious') suspiciousCount++;
+          else if (dp.quality.label === 'anomaly') anomalyCount++;
+        }
+
+        addAlert(dp);
+      }
+
+      // 更新 UI（用最后一条）
+      if (latestDp) updateKPIs(latestDp);
+      updateCharts();
+    }
+  };
+
+  ws.onclose = () => {
+    console.log('WebSocket 断开，3秒后重连...');
+    document.querySelector('.dot').style.background = 'var(--red)';
+    clearInterval(fpsTimer);
+    setTimeout(connectWS, 3000);
+  };
+
+  ws.onerror = (err) => {
+    console.warn('WebSocket 错误', err);
+  };
+}
+
+// 启动
+connectWS();
+</script>
+</body>
+</html>

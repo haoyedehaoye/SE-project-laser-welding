@@ -1,0 +1,114 @@
+# =============================================================================
+# 焊接预测性维护系统 — 配置文件
+# 拓扑：所有设备 → 交换机 → 单根网线 → 电脑网口
+# =============================================================================
+
+# ========== 系统配置 ==========
+system:
+  name: "焊接预测性维护系统"
+  version: "1.0.0"
+  log_level: "INFO"                     # DEBUG | INFO | WARNING | ERROR
+  log_dir: "./logs"
+
+# =============================================================================
+# 电脑网口配置（所有数据从这一个口进来）
+# =============================================================================
+network:
+  interface: "eth0"                     # 网卡名：Linux=eth0/ens33, Windows=以太网
+  ip: "192.168.1.100"                  # 电脑静态 IP（必须和所有设备在同一网段）
+  netmask: "255.255.255.0"
+  gateway: "192.168.1.1"
+
+# ========== STM32 电压电流采集 ==========
+# 路径：STM32(UART) → 串口服务器 → 交换机 → 电脑
+stm32:
+  enabled: true
+  connection_type: "serial_server"      # 串口服务器透传模式
+
+  serial_server:
+    ip: "192.168.1.60"                 # 串口服务器 IP
+    port: 8234                          # 串口服务器 TCP 端口
+    pc_role: "server"                   # 电脑做 Server，串口服务器主动连电脑
+    listen_port: 8234                   # 电脑监听端口
+    allowed_remote_ip: "192.168.1.60"   # 仅允许这台串口服务器连接
+    timeout: 1.0
+    reconnect: true
+    reconnect_interval: 3
+    tcp_keepalive: true                 # 防止交换机静默断开
+
+  uart_params:                          # 串口服务器透传给 STM32 的串口参数
+    baudrate: 115200
+    bytesize: 8
+    parity: "N"
+    stopbits: 1
+
+  protocol:
+    sample_rate_hz: 100
+    frame_header: "AA"
+    frame_footer: "55"
+
+# ========== 机械臂速度采集 ==========
+# 路径：机械臂控制器 → 交换机 → 电脑
+robot:
+  enabled: true
+  connection_type: "modbus_tcp"         # Modbus TCP 协议
+  ip: "192.168.1.200"
+  port: 502
+  slave_id: 1
+  register_speed: 100
+  register_status: 101
+  sample_rate_hz: 10
+  timeout: 1.0
+
+# ========== 温度摄像头（红外热像仪） ==========
+# 路径：热像仪 → 交换机 → 电脑
+thermal_camera:
+  enabled: true
+  connection_type: "rtsp"               # 实际部署后改为 rtsp 或 hikvision_sdk
+  source_type: "simulated"              # 当前用模拟数据，联调时改为 "rtsp"
+  ip: "192.168.1.100"                  # 热像仪 IP
+  port: 554                             # RTSP 默认端口
+  username: "admin"
+  password: "admin123"                  # ⚠ 生产环境改强密码
+  width: 640
+  height: 480
+  sample_rate_hz: 9
+  rtsp_path: "/streaming/channels/1"    # RTSP 流路径（不同品牌不同，海康默认这个）
+
+# ========== 工业摄像头 ==========
+# 路径：工业相机 → 交换机 → 电脑（GigE Vision）
+#      或 USB 直连（不经过交换机）
+industrial_camera:
+  enabled: true
+  connection_type: "gige"               # 实际用 GigE Vision 网络相机
+  source_type: "simulated"              # 当前用模拟数据，联调时改为 "gige"
+  ip: "192.168.1.150"                   # GigE 相机 IP
+  width: 1920
+  height: 1080
+  fps: 30
+  roi: [300, 200, 1200, 600]            # 焊缝区域 [x, y, w, h]
+  pixel_format: "Mono8"                 # GigE 常用格式
+
+# ========== AI 模型 ==========
+ai_model:
+  model_dir: "./models_weights"
+  window_size_ms: 1000
+  anomaly_threshold: 3.0                # Z-score 阈值
+  prediction_horizon_h: 48
+
+# ========== 数据存储 ==========
+storage:
+  influxdb:
+    url: "http://localhost:8086"
+    token: ""
+    org: "welding"
+    bucket: "sensor_data"
+  sqlite:
+    path: "./data/welding.db"
+
+# ========== Web 可视化 ==========
+web:
+  host: "0.0.0.0"
+  port: 8050
+  update_interval_ms: 500
+  max_history_points: 600               # 100Hz × 6秒
