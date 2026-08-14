@@ -1,0 +1,16 @@
+{
+  "task_type": {
+    "assemble": 0,
+    "inspect": 1,
+    "pick": 2,
+    "place": 3,
+    "weld": 4
+  },
+  "object_class": {
+    "bearing": 0,
+    "cylinder": 1,
+    "gear": 2,
+    "panel": 3,
+    "valve": 4
+  }
+}

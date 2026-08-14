@@ -1,0 +1,21 @@
+[
+  "temperature_mean",
+  "temperature_std",
+  "temperature_min",
+  "temperature_max",
+  "temperature_last",
+  "temperature_delta",
+  "humidity_mean",
+  "humidity_std",
+  "humidity_min",
+  "humidity_max",
+  "humidity_last",
+  "humidity_delta",
+  "status_last",
+  "is_running_last",
+  "is_running_rate",
+  "is_fault_last",
+  "is_fault_count_true",
+  "is_emergency_last",
+  "is_emergency_count_true"
+]

@@ -1,0 +1,7 @@
+[
+  "force_sensor",
+  "proximity_sensor",
+  "temperature_sensor",
+  "task_type_enc",
+  "object_class_enc"
+]

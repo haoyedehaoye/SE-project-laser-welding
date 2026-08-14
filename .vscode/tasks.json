@@ -35,6 +35,52 @@
 				"npm: watch-tests"
 			],
 			"problemMatcher": []
+		},
+		{
+			"label": "焊接监控: 启动 STM32 模拟器",
+			"type": "shell",
+			"command": "${workspaceFolder}/.venv/Scripts/python.exe",
+			"args": [
+				"${workspaceFolder}/test/simulator.py"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/test"
+			},
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "welding"
+			}
+		},
+		{
+			"label": "焊接监控: 启动主监控程序",
+			"type": "shell",
+			"command": "${workspaceFolder}/.venv/Scripts/python.exe",
+			"args": [
+				"${workspaceFolder}/test/main.py"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/test"
+			},
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "welding"
+			}
+		},
+		{
+			"label": "焊接监控: 一键启动整个系统",
+			"dependsOn": [
+				"焊接监控: 启动 STM32 模拟器",
+				"焊接监控: 启动主监控程序"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"problemMatcher": []
 		}
 	]
 }

@@ -1,0 +1,20 @@
+{
+  "dataset": "C:\\Users\\lenovo\\Documents\\New project\\demo_runs.csv",
+  "include_image_features": true,
+  "split_mode": "by_run:run_id",
+  "metrics": {
+    "accuracy": 0.9925,
+    "roc_auc": 0.9994,
+    "confusion_matrix": [
+      [
+        136,
+        1
+      ],
+      [
+        2,
+        261
+      ]
+    ]
+  },
+  "trained_at": "2026-08-13 16:54:23"
+}

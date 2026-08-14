@@ -1,0 +1,56 @@
+{
+  "window_size": 32,
+  "feature_spec": {
+    "temperature": [
+      "mean",
+      "std",
+      "min",
+      "max",
+      "last",
+      "delta"
+    ],
+    "humidity": [
+      "mean",
+      "std",
+      "min",
+      "max",
+      "last",
+      "delta"
+    ],
+    "status": [
+      "last"
+    ],
+    "is_running": [
+      "last",
+      "rate"
+    ],
+    "is_fault": [
+      "last",
+      "count_true"
+    ],
+    "is_emergency": [
+      "last",
+      "count_true"
+    ]
+  },
+  "thresholds": {
+    "normal": 0.8,
+    "suspicious": 0.4,
+    "anomaly_prob": 0.6
+  },
+  "test_metrics": {
+    "accuracy": 0.8606,
+    "roc_auc": 0.9252,
+    "confusion_matrix": [
+      [
+        618,
+        117
+      ],
+      [
+        260,
+        1709
+      ]
+    ]
+  },
+  "trained_at": "2026-08-13 16:53:41"
+}

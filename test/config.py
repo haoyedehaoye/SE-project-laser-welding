@@ -1,3 +1,5 @@
+from pathlib import Path
+
 # ============================================================
 # robot_monitor v0.1 — 全局配置
 # ============================================================
@@ -23,3 +25,7 @@ LOG_DIR      = "logs"         # 日志目录
 LOG_LEVEL    = "INFO"         # DEBUG / INFO / WARNING / ERROR
 LOG_ROTATION = "1 day"
 LOG_RETENTION = "7 days"
+# ---------- XGBoost model ----------
+USE_XGBOOST = True
+XGB_MODEL_PATH = Path(__file__).parent.parent / "models" / "xgb_anomaly" / "model.json"
+XGB_WINDOW_SIZE = 32

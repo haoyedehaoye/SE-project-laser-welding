@@ -1,0 +1,19 @@
+{
+  "dataset": "D:\\SEproject\\dataset\\online\\工业机器人传感器与视觉融合数据集\\archive (2)\\Industrial Robot Sensor and Vision Fusion Dataset.csv",
+  "include_image_features": false,
+  "metrics": {
+    "accuracy": 0.994,
+    "roc_auc": 0.9998,
+    "confusion_matrix": [
+      [
+        629,
+        4
+      ],
+      [
+        8,
+        1359
+      ]
+    ]
+  },
+  "trained_at": "2026-08-12 14:53:53"
+}

@@ -16,11 +16,13 @@ from logging.handlers import TimedRotatingFileHandler
 
 from config import (
     LOG_DIR, LOG_LEVEL, LOG_ROTATION, LOG_RETENTION,
+    USE_XGBOOST, XGB_MODEL_PATH, XGB_WINDOW_SIZE,
     SWITCH_IP, SWITCH_PORT,
 )
 from collector import Stm32Collector
 from data_types import DataPoint
 from quality_checker import RuleBasedQualityChecker
+from xgb_checker import XGBoostQualityChecker
 from dashboard import start_dashboard, hub                     # ← NEW
 
 logger = logging.getLogger("main")
@@ -145,11 +147,10 @@ def quality_stats_reporter(checker: RuleBasedQualityChecker, interval: float = 3
 # main
 # ============================================================
 
-def main() -> None:
-    setup_logging()
-
-    # 1) 质检器
-    quality_checker = RuleBasedQualityChecker(
+def make_quality_checker():
+    """Prefer the XGBoost checker; fall back to rule-based
+    quality checking when the model is missing or fails to load."""
+    rule_checker = RuleBasedQualityChecker(
         temp_range=(-20.0, 85.0),
         humi_range=(0.0, 100.0),
         max_temp_delta=5.0,
@@ -159,6 +160,28 @@ def main() -> None:
         freeze_humi_tol=0.5,
         history_size=64,
     )
+
+    if not USE_XGBOOST:
+        return rule_checker
+
+    try:
+        checker = XGBoostQualityChecker(
+            model_path=XGB_MODEL_PATH,
+            window_size=XGB_WINDOW_SIZE,
+        )
+        checker.load()
+        logger.info(f"XGBoost quality model loaded: {XGB_MODEL_PATH}")
+        return checker
+    except Exception as e:
+        logger.error(f"XGBoost checker unavailable, fallback to rules: {e}")
+        return rule_checker
+
+
+def main() -> None:
+    setup_logging()
+
+    # 1) 质检器
+    quality_checker = make_quality_checker()
 
     # 2) 采集器
     collector = Stm32Collector()

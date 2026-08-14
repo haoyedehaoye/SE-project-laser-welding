@@ -1,0 +1,6 @@
+# XGBoost quality-check pipeline dependencies.
+# Install with: pip install -r requirements-ml.txt
+numpy
+scipy
+scikit-learn
+xgboost
