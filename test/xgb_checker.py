@@ -46,7 +46,7 @@ logger = logging.getLogger("quality.xgb")
 
 DEFAULT_FEATURE_SPEC = {
     "temperature":  ["mean", "std", "min", "max", "last", "delta"],
-    "humidity":     ["mean", "std", "min", "max", "last", "delta"],
+    "voltage":     ["mean", "std", "min", "max", "last", "delta"],
     "status":       ["last"],
     "is_running":   ["last", "rate"],
     "is_fault":     ["last", "count_true"],
@@ -132,7 +132,6 @@ class XGBoostQualityChecker(BaseQualityChecker):
         normal_threshold: float = 0.8,
         suspicious_threshold: float = 0.4,
         anomaly_prob_threshold: float = 0.6,
-        history_size: int = 128,
     ) -> None:
         self.model_path = Path(model_path)
         self.feature_spec = feature_spec or DEFAULT_FEATURE_SPEC
@@ -143,9 +142,10 @@ class XGBoostQualityChecker(BaseQualityChecker):
 
         self._model = None
         self._feature_names: Optional[list[str]] = None
-        self._history: deque[DataPoint] = deque(
-            maxlen=max(history_size, self.window_size)
-        )
+        # 特征窗口必须与训练一致（train_xgboost.py 用固定 `window_size` 帧建窗）：
+        # 只保留最近 `window_size` 帧，避免统计量在 128 帧的可变长度上计算，
+        # 造成推理特征分布与训练分布不一致（OOD）。
+        self._history: deque[DataPoint] = deque(maxlen=self.window_size)
 
         # Rule-based fallback used while the window is warming up.
         self._fallback = RuleBasedQualityChecker()

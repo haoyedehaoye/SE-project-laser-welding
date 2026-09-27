@@ -1,0 +1,1 @@
+"""Formal application tests."""

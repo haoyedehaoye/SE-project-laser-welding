@@ -1,0 +1,121 @@
+{
+  "dataset": "D:\\SEproject\\dataset\\online\\对激光焊接的钢-铜搭接接头的数据集\\Definitive screening steel-copper lap joints V1.xlsx",
+  "input_features": [
+    "power",
+    "speed",
+    "gas_flow",
+    "focal",
+    "angular",
+    "thickness",
+    "cross_section_mm"
+  ],
+  "with_position": true,
+  "n_rows": 360,
+  "n_crack": 50,
+  "cv_folds": 5,
+  "cv_note": "GroupKFold 按 weld number 分组；裂纹为 pooled 行级指标 + 按焊缝聚合准确率",
+  "crack_cv": {
+    "n": 360,
+    "pos_rate": 0.1389,
+    "accuracy": 0.9556,
+    "balanced_accuracy": 0.9658,
+    "f1": 0.8596,
+    "roc_auc": 0.9817,
+    "pr_auc": 0.8304,
+    "confusion_matrix": [
+      [
+        295,
+        15
+      ],
+      [
+        1,
+        49
+      ]
+    ],
+    "weld_accuracy": 1.0,
+    "n_welds": 5
+  },
+  "geo_cv": {
+    "steel_w": {
+      "n": 359,
+      "mae": 173.405,
+      "rmse": 308.469,
+      "r2": 0.8644,
+      "y_mean": 1733.21,
+      "y_std": 837.67
+    },
+    "copper_w": {
+      "n": 360,
+      "mae": 33.854,
+      "rmse": 58.83,
+      "r2": 0.9064,
+      "y_mean": 215.5,
+      "y_std": 192.3
+    },
+    "copper_d": {
+      "n": 360,
+      "mae": 27.471,
+      "rmse": 57.843,
+      "r2": 0.878,
+      "y_mean": 111.77,
+      "y_std": 165.61
+    },
+    "gap": {
+      "n": 358,
+      "mae": 21.945,
+      "rmse": 38.536,
+      "r2": 0.586,
+      "y_mean": 65.53,
+      "y_std": 59.9
+    }
+  },
+  "geo_models": {
+    "steel_w": {
+      "label": "钢侧熔宽(µm)",
+      "n_train": 359
+    },
+    "copper_w": {
+      "label": "铜侧熔宽(µm)",
+      "n_train": 360
+    },
+    "copper_d": {
+      "label": "铜侧熔深(µm)",
+      "n_train": 360
+    },
+    "gap": {
+      "label": "间隙(µm)",
+      "n_train": 358
+    }
+  },
+  "input_ranges": {
+    "power": [
+      900.0,
+      1200.0
+    ],
+    "speed": [
+      0.8,
+      1.2
+    ],
+    "gas_flow": [
+      10.0,
+      20.0
+    ],
+    "focal": [
+      -2.0,
+      2.0
+    ],
+    "angular": [
+      -15.0,
+      15.0
+    ],
+    "thickness": [
+      0.5,
+      0.7
+    ],
+    "cross_section_mm": [
+      8.0,
+      32.0
+    ]
+  },
+  "trained_at": "2026-09-02 22:40:58"
+}

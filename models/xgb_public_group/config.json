@@ -1,20 +1,54 @@
 {
-  "dataset": "C:\\Users\\lenovo\\Documents\\New project\\demo_runs.csv",
-  "include_image_features": true,
-  "split_mode": "by_run:run_id",
-  "metrics": {
-    "accuracy": 0.9925,
-    "roc_auc": 0.9994,
+  "dataset": "D:\\SEproject\\dataset\\online\\对激光焊接的钢-铜搭接接头的数据集\\Definitive screening steel-copper lap joints V1.xlsx",
+  "variant": "group",
+  "description": "V1 全特征版（6 工艺参数，按焊缝分组切分，防泄漏）",
+  "feature_names": [
+    "power (W)",
+    "welding speed (m/min)",
+    "gas flow rate (l/min)",
+    "focal position (mm)",
+    "angular position (°)",
+    "material thickness (mm)"
+  ],
+  "split_mode": "by_weld",
+  "test_metrics": {
+    "n": 144,
+    "pos_rate": 0.1319,
+    "accuracy": 0.9097,
+    "balanced_accuracy": 0.948,
+    "roc_auc": 0.9766,
+    "pr_auc": 0.7906,
+    "brier": 0.0623,
+    "precision": 0.5938,
+    "recall": 1.0,
+    "f1": 0.7451,
     "confusion_matrix": [
       [
-        136,
-        1
+        112,
+        13
       ],
       [
-        2,
-        261
+        0,
+        19
       ]
-    ]
+    ],
+    "best_threshold_by_f1": {
+      "threshold": 0.65,
+      "f1": 0.7907
+    },
+    "three_class": {
+      "true=0": {
+        "normal": 112,
+        "suspicious": 0,
+        "anomaly": 13
+      },
+      "true=1": {
+        "normal": 0,
+        "suspicious": 0,
+        "anomaly": 19
+      }
+    }
   },
-  "trained_at": "2026-08-13 16:54:23"
+  "scale_pos_weight": 5.8571,
+  "trained_at": "2026-09-02 01:25:51"
 }

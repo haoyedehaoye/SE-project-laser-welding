@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>机械臂预测性维护数据平台</title>
+  <style>
+    :root{font-family:"Microsoft YaHei",system-ui,sans-serif;color-scheme:dark;--bg:#07111e;--panel:#101d2d;--line:#26384e;--muted:#8da2bb;--blue:#55a7ff;--green:#57d6a4;--red:#ff7d8c}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,#153557 0,transparent 28%),var(--bg);color:#eef5ff}
+    header{padding:22px 28px;border-bottom:1px solid var(--line);background:#0b1726e8}h1{margin:0 0 6px;font-size:21px}.sub{color:var(--muted);font-size:13px}
+    main{display:grid;grid-template-columns:minmax(420px,1.35fr) minmax(340px,1fr);gap:16px;padding:18px}.stack{display:grid;gap:16px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 14px 34px #0004}.card h2{font-size:15px;margin:0;padding:13px 15px;border-bottom:1px solid var(--line)}
+    .preview{min-height:390px;background:#03070c;display:flex;align-items:center;justify-content:center;color:var(--muted)}.preview img{width:100%;max-height:62vh;object-fit:contain;display:none}
+    .body{padding:14px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.kpi{background:#0a1523;border:1px solid var(--line);border-radius:9px;padding:10px}.kpi small{display:block;color:var(--muted);margin-bottom:7px}.yes{color:var(--green)}.no{color:var(--red)}
+    dl{display:grid;grid-template-columns:115px 1fr;gap:8px;margin:0;font-size:13px}dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}.models{display:grid;gap:7px}.model{display:flex;justify-content:space-between;padding:8px 10px;background:#0a1523;border-radius:7px;font-size:12px}
+    form{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}label{font-size:11px;color:var(--muted)}input{width:100%;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:6px;background:#07111e;color:#eef5ff}button{padding:9px 13px;border:0;border-radius:7px;background:#2779d8;color:white;cursor:pointer}pre{white-space:pre-wrap;font-size:11px;color:#b8cae0;max-height:250px;overflow:auto}
+    @media(max-width:950px){main{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+<header><h1>激光焊接机械臂 · 预测性维护数据平台</h1><div class="sub">采集 → 数据质量 → XGBoost 分析 → 传输 → 前端；维护模型尚需真实故障与维修标签</div></header>
+<main>
+  <div class="stack">
+    <section class="card"><h2>焊接视频</h2><div class="preview"><span id="video-note">正在等待相机画面…</span><img id="video" alt="焊接视频"></div></section>
+    <section class="card"><h2>四类数据就绪度</h2><div class="body"><div class="kpis" id="modalities"></div><p class="sub" id="gap"></p></div></section>
+  </div>
+  <div class="stack">
+    <section class="card"><h2>采集状态</h2><div class="body"><dl id="status"></dl></div></section>
+    <section class="card"><h2>最近采集时间（本机时区）</h2><div class="body"><dl id="timestamps"></dl></div></section>
+    <section class="card"><h2>XGBoost 模型注册表</h2><div class="body models" id="models"></div></section>
+    <section class="card"><h2>工艺模型联合分析</h2><div class="body">
+      <form id="analysis-form">
+        <label>功率 W<input name="power" value="1050"></label><label>速度 m/min<input name="speed" value="1"></label><label>气流量<input name="gas_flow" value="15"></label>
+        <label>焦点 mm<input name="focal" value="0"></label><label>角度 °<input name="angular" value="0"></label><label>板厚 mm<input name="thickness" value="0.6"></label>
+        <label>横截面 mm<input name="cross_section_mm" value="16"></label><button type="submit">运行全部工艺模型</button>
+      </form><pre id="result">等待分析…</pre>
+    </div></section>
+  </div>
+</main>
+<script>
+const esc=v=>String(v??'-').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function json(url,options){const r=await fetch(url,{cache:'no-store',...options});const x=await r.json();if(!r.ok)throw new Error(x.detail||x.error||r.statusText);return x}
+function localTime(seconds){return Number.isFinite(seconds)?new Date(seconds*1000).toLocaleString('zh-CN',{hour12:false}):'未收到'}
+async function refresh(){try{
+  const [camera,current,ready,registry,timestamps]=await Promise.all([json('/api/camera/status'),json('/api/current/status'),json('/api/maintenance/readiness'),json('/api/models'),json('/api/data/timestamps')]);
+  document.getElementById('status').innerHTML=[['相机',camera.state],['视频帧',camera.details?.frames_received||0],['电流',current.state],['电流样本',current.details?.samples_received||0]].map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
+  const names={stm32:'STM32 电流/电压',thermal:'温度矩阵',robot:'机械臂速度/时间',camera:'工业相机'};
+  document.getElementById('timestamps').innerHTML=Object.entries(names).map(([key,label])=>{
+    const item=timestamps.sources[key];if(!item)return `<dt>${label}</dt><dd>尚未收到数据</dd>`;
+    const origin=item.timestamp_origin==='device_unix_seconds'?'设备提供':'主机标记';
+    const raw=item.source_timestamp_raw==null?'':`<br>设备原始时间值：${esc(item.source_timestamp_raw)}（单位未确认）`;
+    return `<dt>${label}</dt><dd>采集：${esc(localTime(item.captured_at))}（${origin}）<br>主机接收：${esc(localTime(item.received_at))}${raw}</dd>`;
+  }).join('');
+  document.getElementById('modalities').innerHTML=Object.entries(ready.modalities).map(([k,v])=>`<div class="kpi"><small>${esc(k)}</small><strong class="${v?'yes':'no'}">${v?'已有数据':'待接入'}</strong></div>`).join('');
+  document.getElementById('gap').textContent=ready.blocking_gap;
+  document.getElementById('models').innerHTML=registry.models.map(m=>`<div class="model"><span>${esc(m.name)} · ${esc(m.task)}</span><span class="${m.available?'yes':'no'}">${m.model_count} 个 · ${m.available?'可发现':'缺失'}</span></div>`).join('');
+  const image=document.getElementById('video'),note=document.getElementById('video-note');if(camera.connected&&!image.src){image.src='/api/camera/stream?t='+Date.now()}image.style.display=camera.connected?'block':'none';note.style.display=camera.connected?'none':'block';note.textContent=camera.message||'等待相机';
+}catch(e){document.getElementById('gap').textContent='后端暂不可用：'+e.message}}
+document.getElementById('analysis-form').onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries([...new FormData(e.target)].map(([k,v])=>[k,Number(v)]));const out=document.getElementById('result');out.textContent='模型加载与推理中…';try{out.textContent=JSON.stringify(await json('/api/analysis/process',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}),null,2)}catch(err){out.textContent=err.message}};
+refresh();setInterval(refresh,2000);
+</script>
+</body></html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>钢-铜搭接接头裂纹预测</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#c9d1d9; --muted:#8b949e; --blue:#58a6ff; --green:#3fb950; --red:#f85149; }
+  * { margin:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif; padding:20px; }
+  .wrap { max-width:680px; margin:0 auto; }
+  h1 { font-size:20px; margin-bottom:4px; }
+  .sub { color:var(--muted); font-size:12px; margin-bottom:20px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:18px; margin-bottom:14px; }
+  .row { display:flex; gap:10px; margin-bottom:12px; align-items:center; }
+  .row label { width:190px; font-size:13px; color:var(--muted); }
+  .row input { flex:1; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:14px; }
+  button { width:100%; padding:11px; border:none; border-radius:8px; background:var(--blue); color:#fff; font-size:15px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  #result { margin-top:14px; font-size:15px; line-height:1.8; }
+  #result .prob { font-size:26px; font-weight:700; }
+  #result .tag { display:inline-block; padding:2px 10px; border-radius:12px; font-size:13px; font-weight:600; }
+  .tag.ok { background:#1a3a1a; color:var(--green); }
+  .tag.bad { background:#3a1010; color:var(--red); }
+  #status { color:var(--muted); font-size:12px; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔬 钢-铜搭接接头激光焊接 · 裂纹预测</h1>
+  <div class="sub">输入 6 个工艺参数，模型给出裂纹概率与判定（阈值 0.5）。</div>
+  <div class="card">
+    <div class="row"><label>功率 (W) 900~1200</label><input id="power" type="number" value="1050"></div>
+    <div class="row"><label>焊接速度 (m/min) 0.8~1.2</label><input id="speed" type="number" step="0.1" value="1.0"></div>
+    <div class="row"><label>气流量 (l/min) 10~20</label><input id="gas_flow" type="number" value="15"></div>
+    <div class="row"><label>焦点位置 (mm) -2~2</label><input id="focal" type="number" step="0.1" value="0"></div>
+    <div class="row"><label>角度 (°) -15~15</label><input id="angular" type="number" value="0"></div>
+    <div class="row"><label>板厚 (mm) 0.5~0.7</label><input id="thickness" type="number" step="0.05" value="0.6"></div>
+    <button id="btn">预测裂纹</button>
+    <div id="result"></div>
+    <div id="status"></div>
+  </div>
+  <div class="sub">也可用命令行：<code>python predict_lap_joint.py --power 1050 --speed 1 ...</code></div>
+</div>
+<script>
+const keys = ['power', 'speed', 'gas_flow', 'focal', 'angular', 'thickness'];
+const btn = document.getElementById('btn');
+const resultEl = document.getElementById('result');
+const statusEl = document.getElementById('status');
+
+btn.addEventListener('click', async () => {
+  const payload = {};
+  for (const k of keys) payload[k] = parseFloat(document.getElementById(k).value);
+  btn.disabled = true;
+  statusEl.textContent = '预测中…';
+  try {
+    const resp = await fetch('/api/predict_lap_joint', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+    const p = data.probability;
+    const ok = p < 0.5;
+    resultEl.innerHTML =
+      '<div>裂纹概率 <span class="prob">' + (p * 100).toFixed(1) + '%</span></div>' +
+      '<div>判定 <span class="tag ' + (ok ? 'ok' : 'bad') + '">' + (ok ? '无裂纹风险' : '有裂纹风险') + '</span></div>' +
+      '<div style="color:var(--muted);font-size:12px;">' + (data.note || '') + '</div>';
+  } catch (e) {
+    resultEl.innerHTML = '<div style="color:var(--red);">请求失败: ' + e.message + '</div>';
+  } finally {
+    btn.disabled = false;
+    statusEl.textContent = '';
+  }
+});
+</script>
+</body>
+</html>

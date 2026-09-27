@@ -1,0 +1,5 @@
+[receiver]
+# 0.0.0.0 监听本机所有 IPv4 网卡；确定直连网卡地址后可改为该地址。
+bind_host = "0.0.0.0"
+port = 5000
+backend_url = "http://127.0.0.1:18080/api/data/temperature/raw"

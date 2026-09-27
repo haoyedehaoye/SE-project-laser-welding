@@ -1,0 +1,82 @@
+{
+  "task": "crack",
+  "input_features": [
+    "power",
+    "speed",
+    "gas_flow",
+    "focal",
+    "angular",
+    "thickness",
+    "cross_section_mm"
+  ],
+  "n_rows": 360,
+  "n_crack": 50,
+  "note": "V1 真实数据；按 weld number 分组 GroupKFold(5)",
+  "cv_folds": 5,
+  "seed": 42,
+  "models": {
+    "XGBoost": {
+      "n": 360,
+      "pos_rate": 0.1389,
+      "accuracy": 0.9556,
+      "balanced_accuracy": 0.9658,
+      "f1": 0.8596,
+      "roc_auc": 0.9794,
+      "pr_auc": 0.8304,
+      "group_accuracy": 1.0,
+      "n_groups": 5,
+      "elapsed_s": 0.4
+    },
+    "RandomForest": {
+      "n": 360,
+      "pos_rate": 0.1389,
+      "accuracy": 0.9556,
+      "balanced_accuracy": 0.9658,
+      "f1": 0.8596,
+      "roc_auc": 0.9801,
+      "pr_auc": 0.83,
+      "group_accuracy": 1.0,
+      "n_groups": 5,
+      "elapsed_s": 2.2
+    },
+    "ExtraTrees": {
+      "n": 360,
+      "pos_rate": 0.1389,
+      "accuracy": 0.9556,
+      "balanced_accuracy": 0.9658,
+      "f1": 0.8596,
+      "roc_auc": 0.9812,
+      "pr_auc": 0.8493,
+      "group_accuracy": 1.0,
+      "n_groups": 5,
+      "elapsed_s": 2.5
+    },
+    "HistGB": {
+      "n": 360,
+      "pos_rate": 0.1389,
+      "accuracy": 0.9556,
+      "balanced_accuracy": 0.9323,
+      "f1": 0.8491,
+      "roc_auc": 0.9812,
+      "pr_auc": 0.8357,
+      "group_accuracy": 1.0,
+      "n_groups": 5,
+      "elapsed_s": 4.2
+    },
+    "LogisticReg": {
+      "n": 360,
+      "pos_rate": 0.1389,
+      "accuracy": 0.9389,
+      "balanced_accuracy": 0.9645,
+      "f1": 0.8197,
+      "roc_auc": 0.9798,
+      "pr_auc": 0.7805,
+      "group_accuracy": 1.0,
+      "n_groups": 5,
+      "elapsed_s": 0.0
+    }
+  },
+  "selected_model": "ExtraTrees",
+  "selected_note": "ROC-AUC 最高（平手取 PR-AUC）；差异 < 数据不确定度时建议沿用现方案",
+  "trained_at": "2026-09-03 02:19:13"
+}

@@ -1,0 +1,66 @@
+{
+  "test_metrics": {
+    "n": 144,
+    "pos_rate": 0.1319,
+    "accuracy": 0.9097,
+    "balanced_accuracy": 0.948,
+    "precision": 0.5938,
+    "recall": 1.0,
+    "f1": 0.7451,
+    "roc_auc": 0.9766,
+    "pr_auc": 0.7906,
+    "confusion_matrix": [
+      [
+        112,
+        13
+      ],
+      [
+        0,
+        19
+      ]
+    ]
+  },
+  "best_f1_threshold": {
+    "threshold": 0.65,
+    "f1": 0.7907
+  },
+  "per_weld": {
+    "2": {
+      "n": 72,
+      "accuracy": 0.9306,
+      "f1": 0.8148,
+      "confusion_matrix": [
+        [
+          56,
+          5
+        ],
+        [
+          0,
+          11
+        ]
+      ]
+    },
+    "5": {
+      "n": 72,
+      "accuracy": 0.8889,
+      "f1": 0.6667,
+      "confusion_matrix": [
+        [
+          56,
+          8
+        ],
+        [
+          0,
+          8
+        ]
+      ]
+    }
+  },
+  "cv": {
+    "folds": 5,
+    "accuracy_mean": 0.9167,
+    "accuracy_std": 0.0196,
+    "roc_auc_mean": 0.9814,
+    "roc_auc_std": 0.0136
+  }
+}

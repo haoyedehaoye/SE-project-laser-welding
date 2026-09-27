@@ -171,7 +171,7 @@ class Stm32Collector(BaseCollector):
     帧协议（8 字节）：
         帧头  1B  0xAA
         温度  2B  int16 大端 单位 0.1°C
-        湿度  2B  uint16 大端 单位 0.1%
+        电压  2B  uint16 大端 单位 0.1V
         状态  1B  uint8
         校验  1B  XOR
         帧尾  1B  0x55
@@ -238,13 +238,13 @@ class Stm32Collector(BaseCollector):
 
     @staticmethod
     def _parse_segment(seg: bytes) -> DataPoint:
-        temp_raw, humi_raw, status = struct.unpack(">hHB", seg)
+        temp_raw, voltage_raw, status = struct.unpack(">hHB", seg)
         return DataPoint(
             timestamp=time.time(),
             source="stm32",
             data={
                 "temperature": round(temp_raw / 10.0, 1),
-                "humidity":    round(humi_raw / 10.0, 1),
+                "voltage":    round(voltage_raw / 10.0, 1),
                 "status":      status,
                 "is_running":  bool(status & 0b010),
                 "is_emergency": bool(status & 0b001),

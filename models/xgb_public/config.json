@@ -1,19 +1,54 @@
 {
-  "dataset": "D:\\SEproject\\dataset\\online\\工业机器人传感器与视觉融合数据集\\archive (2)\\Industrial Robot Sensor and Vision Fusion Dataset.csv",
-  "include_image_features": true,
-  "metrics": {
-    "accuracy": 0.9945,
-    "roc_auc": 0.9998,
+  "dataset": "D:\\SEproject\\dataset\\online\\对激光焊接的钢-铜搭接接头的数据集\\Definitive screening steel-copper lap joints V1.xlsx",
+  "variant": "public",
+  "description": "V1 全特征版（6 工艺参数，随机分层切分）",
+  "feature_names": [
+    "power (W)",
+    "welding speed (m/min)",
+    "gas flow rate (l/min)",
+    "focal position (mm)",
+    "angular position (°)",
+    "material thickness (mm)"
+  ],
+  "split_mode": "random_stratified",
+  "test_metrics": {
+    "n": 54,
+    "pos_rate": 0.1296,
+    "accuracy": 0.9259,
+    "balanced_accuracy": 0.9574,
+    "roc_auc": 0.9802,
+    "pr_auc": 0.7857,
+    "brier": 0.0416,
+    "precision": 0.6364,
+    "recall": 1.0,
+    "f1": 0.7778,
     "confusion_matrix": [
       [
-        630,
-        3
+        43,
+        4
       ],
       [
-        8,
-        1359
+        0,
+        7
       ]
-    ]
+    ],
+    "best_threshold_by_f1": {
+      "threshold": 0.85,
+      "f1": 0.9333
+    },
+    "three_class": {
+      "true=0": {
+        "normal": 43,
+        "suspicious": 0,
+        "anomaly": 4
+      },
+      "true=1": {
+        "normal": 0,
+        "suspicious": 0,
+        "anomaly": 7
+      }
+    }
   },
-  "trained_at": "2026-08-12 14:53:40"
+  "scale_pos_weight": 6.2,
+  "trained_at": "2026-09-02 01:22:00"
 }

@@ -3,3 +3,13 @@ dist
 node_modules
 .vscode-test/
 *.vsix
+.venv/
+__pycache__/
+*.py[cod]
+logs/
+recordings/
+data/*.db
+data/*.db-shm
+data/*.db-wal
+project_archive/history/before_timestamps_2026-09-27/
+project_archive/early-prototype/processing/config.yaml

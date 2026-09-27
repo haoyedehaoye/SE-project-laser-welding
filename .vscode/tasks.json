@@ -4,39 +4,6 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"type": "npm",
-			"script": "watch",
-			"problemMatcher": "$ts-webpack-watch",
-			"isBackground": true,
-			"presentation": {
-				"reveal": "never",
-				"group": "watchers"
-			},
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
-		},
-		{
-			"type": "npm",
-			"script": "watch-tests",
-			"problemMatcher": "$tsc-watch",
-			"isBackground": true,
-			"presentation": {
-				"reveal": "never",
-				"group": "watchers"
-			},
-			"group": "build"
-		},
-		{
-			"label": "tasks: watch-tests",
-			"dependsOn": [
-				"npm: watch",
-				"npm: watch-tests"
-			],
-			"problemMatcher": []
-		},
-		{
 			"label": "焊接监控: 启动 STM32 模拟器",
 			"type": "shell",
 			"command": "${workspaceFolder}/.venv/Scripts/python.exe",
@@ -73,12 +40,156 @@
 		{
 			"label": "焊接监控: 一键启动整个系统",
 			"dependsOn": [
-				"焊接监控: 启动 STM32 模拟器",
-				"焊接监控: 启动主监控程序"
+				"温度 TEST: 启动后端",
+				"温度 TEST: 启动本机接收端",
+				"工具: 等待温度 TEST 并打开热图"
 			],
 			"presentation": {
 				"reveal": "always",
 				"panel": "dedicated"
+			},
+			"problemMatcher": [],
+			"dependsOrder": "sequence"
+		},
+		{
+			"label": "正式系统: 启动服务",
+			"type": "shell",
+			"command": "${workspaceFolder}/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"app.main"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "formal"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "工具: 等待服务并打开首页",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/open_url_when_ready.ps1",
+				"-Url",
+				"http://localhost:18080/"
+			],
+			"presentation": {
+				"reveal": "silent",
+				"panel": "shared",
+				"group": "formal"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "正式系统: 一键启动并打开相机监控",
+			"dependsOn": [
+				"正式系统: 启动服务",
+				"工具: 等待服务并打开首页"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "formal"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "正式系统: 打开相机监控页面",
+			"type": "shell",
+			"command": "Start-Process 'http://localhost:18080/'",
+			"problemMatcher": []
+		},
+		{
+			"label": "温度 TEST: 启动后端",
+			"type": "shell",
+			"command": "${workspaceFolder}/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"uvicorn",
+				"dashboard:app",
+				"--host",
+				"127.0.0.1",
+				"--port",
+				"18080"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/test"
+			},
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "thermal"
+			},
+			"problemMatcher": {
+				"owner": "thermal-backend",
+				"pattern": {
+					"regexp": "^$"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^$",
+					"endsPattern": "^INFO:.*Application startup complete\\."
+				}
+			}
+		},
+		{
+			"label": "温度 TEST: 启动本机接收端",
+			"type": "shell",
+			"command": "${workspaceFolder}/.venv/Scripts/python.exe",
+			"args": [
+				"${workspaceFolder}/test/thermal_receiver.py"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/test"
+			},
+			"isBackground": true,
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "thermal"
+			},
+			"problemMatcher": {
+				"owner": "thermal-receiver",
+				"pattern": {
+					"regexp": "^$"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^$",
+					"endsPattern": "^.*THERMAL_RECEIVER_READY.*$"
+				}
+			}
+		},
+		{
+			"label": "工具: 等待温度 TEST 并打开热图",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/open_url_when_ready.ps1",
+				"-Url",
+				"http://127.0.0.1:18080/",
+				"-HealthUrl",
+				"http://127.0.0.1:18080/api/data/temperature/latest"
+			],
+			"presentation": {
+				"reveal": "silent",
+				"panel": "shared",
+				"group": "thermal"
 			},
 			"problemMatcher": []
 		}

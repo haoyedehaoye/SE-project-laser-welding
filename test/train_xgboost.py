@@ -1,6 +1,9 @@
 """
 robot_monitor v0.4 - XGBoost anomaly detection model training script
 
+注：xgb_anomaly 为保留的合成数据窗口模型（2026-09 决定），未用
+钢-铜搭接接头 V1 数据集重训——V1 只有工艺参数、没有温度/电压时间序列。
+
 Usage:
     1) Train on synthetic data (mirrors test/simulator.py scenarios):
        python train_xgboost.py
@@ -8,7 +11,7 @@ Usage:
     2) Train on your own labeled data:
        python train_xgboost.py --csv data/welding_labeled.csv
 
-       CSV columns: temperature, humidity, status, label
+       CSV columns: temperature, voltage, status, label
        (label: 0 = normal, 1 = anomaly; optional run_id groups sequences,
         meaning one welding run is kept inside one train/val split)
 
@@ -72,7 +75,7 @@ N_SEQUENCES = 80
 
 ANOMALY_TYPES = [
     "temp_spike",
-    "humidity_drop",
+    "voltage_drop",
     "frozen",
     "status_fault",
     "rapid_change",
@@ -91,9 +94,9 @@ def _walk(base: float, spread: float, prev: Optional[float]) -> float:
 
 def simulate_sequence(seq_id: int) -> list[tuple[dict, int]]:
     temp = 42.0
-    humi = 58.0
+    voltage = 25.0
     status = 0b010
-    frozen_temp, frozen_humi = temp, humi
+    frozen_temp, frozen_voltage = temp, voltage
     episode_left = 0
     episode_type: Optional[str] = None
     frames: list[tuple[dict, int]] = []
@@ -111,28 +114,28 @@ def simulate_sequence(seq_id: int) -> list[tuple[dict, int]]:
             label = 1
             if episode_type == "temp_spike":
                 temp += random.uniform(1.5, 3.0)
-            elif episode_type == "humidity_drop":
-                humi -= random.uniform(2.0, 4.0)
+            elif episode_type == "voltage_drop":
+                voltage -= random.uniform(2.0, 4.0)
             elif episode_type == "frozen":
-                temp, humi = frozen_temp, frozen_humi
+                temp, voltage = frozen_temp, frozen_voltage
             elif episode_type == "status_fault":
                 status |= 0b100
             elif episode_type == "rapid_change":
                 temp += random.choice([-7.0, 7.0])
         else:
             temp = _walk(42.0, 2.0, temp)
-            humi = _walk(58.0, 5.0, humi)
+            voltage = _walk(25.0, 3.0, voltage)
             status = 0b010
-            frozen_temp, frozen_humi = temp, humi
+            frozen_temp, frozen_voltage = temp, voltage
 
         temp = max(-20.0, min(85.0, temp))
-        humi = max(0.0, min(100.0, humi))
+        voltage = max(0.0, min(60.0, voltage))
 
         frames.append(
             (
                 {
                     "temperature": round(temp, 2),
-                    "humidity": round(humi, 2),
+                    "voltage": round(voltage, 2),
                     "status": status,
                     "is_running": bool(status & 0b010),
                     "is_emergency": bool(status & 0b001),
@@ -206,7 +209,7 @@ def load_csv(path: str) -> list[list[tuple[dict, int]]]:
             status = int(row.get("status", 0))
             data = {
                 "temperature": float(row["temperature"]),
-                "humidity": float(row["humidity"]),
+                "voltage": float(row["voltage"]),
                 "status": status,
                 "is_running": bool(status & 0b010),
                 "is_emergency": bool(status & 0b001),

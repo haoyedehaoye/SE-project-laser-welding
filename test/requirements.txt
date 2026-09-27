@@ -1,0 +1,20 @@
+# 完整运行依赖（新电脑安装：pip install -r requirements.txt）
+
+# ---- 仪表盘 ----
+fastapi==0.141.1
+uvicorn==0.52.1
+websockets==17.0.1
+
+# ---- 机器学习 ----
+numpy==2.5.2
+scipy==1.18.0
+scikit-learn==1.9.0
+xgboost==3.4.0
+
+# ---- 多模态问答（可选） ----
+openai==3.1.0
+
+# ---- Excel 数据集读取 ----
+openpyxl==3.1.5
+
+

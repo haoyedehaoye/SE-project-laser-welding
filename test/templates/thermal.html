@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TEST · 热像仪温度矩阵</title>
+  <style>
+    :root{font-family:"Microsoft YaHei",system-ui,sans-serif;color:#eaf2ff;background:#07111d}
+    *{box-sizing:border-box}body{margin:0;padding:24px;max-width:1500px;margin-inline:auto}
+    h1{font-size:23px;margin:0 0 6px}.sub{color:#9fb2c9;font-size:14px;margin:0 0 22px}
+    .layout{display:grid;grid-template-columns:minmax(0,3fr) minmax(270px,1fr);gap:18px}
+    .panel{background:#102033;border:1px solid #294058;border-radius:12px;padding:18px}
+    .visual{min-height:480px;display:grid;place-items:center;background:#050a11;border-radius:8px;overflow:hidden}
+    canvas{display:none;width:100%;height:auto;max-height:70vh;object-fit:contain;image-rendering:pixelated}
+    #placeholder{color:#9fb2c9;text-align:center;padding:24px}
+    .legend{height:13px;background:linear-gradient(90deg,#172a76,#165ed3,#17c2d6,#e3df4d,#e34a27);border-radius:8px;margin-top:14px}
+    .legend-labels{display:flex;justify-content:space-between;color:#9fb2c9;font-size:12px;margin-top:5px}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}.stat{background:#0a1726;border-radius:8px;padding:12px}
+    .stat small{display:block;color:#9fb2c9;margin-bottom:7px}.stat strong{font-size:22px}
+    dl{display:grid;grid-template-columns:92px 1fr;gap:8px;margin:20px 0 0;font-size:13px}dt{color:#9fb2c9}dd{margin:0;overflow-wrap:anywhere}
+    .live{color:#43d6a2}.wait{color:#ffc35e}.bad{color:#ff7889}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}.visual{min-height:300px}}
+  </style>
+</head>
+<body>
+  <h1>热像仪温度矩阵 · TEST</h1>
+  <p class="sub">真实设备原始 Int16 温度帧。页面显示缩小后的热图；后端仅保留最新完整矩阵，不保存历史录像。</p>
+  <div class="layout">
+    <section class="panel">
+      <div class="visual"><canvas id="heatmap" aria-label="二维温度热图"></canvas><div id="placeholder">等待工作机发送温度帧…</div></div>
+      <div class="legend"></div><div class="legend-labels"><span id="legend-min">-- °C</span><span id="legend-max">-- °C</span></div>
+    </section>
+    <section class="panel">
+      <div class="stats">
+        <div class="stat"><small>最低温度</small><strong id="minimum">--</strong></div>
+        <div class="stat"><small>最高温度</small><strong id="maximum">--</strong></div>
+        <div class="stat"><small>平均温度</small><strong id="average">--</strong></div>
+        <div class="stat"><small>接收帧数</small><strong id="received">0</strong></div>
+      </div>
+      <dl>
+        <dt>连接状态</dt><dd id="state" class="wait">等待温度数据</dd>
+        <dt>设备帧号</dt><dd id="sequence">--</dd>
+        <dt>矩阵尺寸</dt><dd id="resolution">--</dd>
+        <dt>平均帧率</dt><dd id="fps">--</dd>
+        <dt>帧号缺口</dt><dd id="gaps">0</dd>
+        <dt>最近收帧</dt><dd id="age">--</dd>
+        <dt>设备时间戳</dt><dd id="timestamp">--</dd>
+      </dl>
+    </section>
+  </div>
+  <script>
+    const $=id=>document.getElementById(id);
+    const canvas=$('heatmap'),ctx=canvas.getContext('2d');
+    const stops=[[23,42,118],[22,94,211],[23,194,214],[227,223,77],[227,74,39]];
+    function color(t){
+      const scaled=Math.max(0,Math.min(0.999999,t))*(stops.length-1),i=Math.floor(scaled),a=scaled-i;
+      return stops[i].map((v,k)=>Math.round(v+(stops[i+1][k]-v)*a));
+    }
+    function draw(grid,min,max){
+      const height=grid.length,width=grid[0].length;
+      if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height}
+      const image=ctx.createImageData(width,height),range=Math.max(max-min,0.01);
+      for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+        const pixel=(y*width+x)*4,rgb=color((grid[y][x]-min)/range);
+        image.data[pixel]=rgb[0];image.data[pixel+1]=rgb[1];image.data[pixel+2]=rgb[2];image.data[pixel+3]=255;
+      }
+      ctx.putImageData(image,0,0);canvas.style.display='block';$('placeholder').style.display='none';
+    }
+    async function refresh(){
+      try{
+        const response=await fetch('/api/data/temperature/latest',{cache:'no-store'});
+        if(!response.ok)throw new Error(`HTTP ${response.status}`);
+        const data=await response.json(),frame=data.frame;
+        $('received').textContent=data.received_frames;$('gaps').textContent=data.sequence_gaps;
+        if(!frame){$('state').textContent='等待温度数据';$('state').className='wait';return}
+        draw(frame.grid,frame.minimum_celsius,frame.maximum_celsius);
+        $('minimum').textContent=frame.minimum_celsius.toFixed(2)+' °C';
+        $('maximum').textContent=frame.maximum_celsius.toFixed(2)+' °C';
+        $('average').textContent=frame.average_celsius.toFixed(2)+' °C';
+        $('legend-min').textContent=frame.minimum_celsius.toFixed(1)+' °C';
+        $('legend-max').textContent=frame.maximum_celsius.toFixed(1)+' °C';
+        $('sequence').textContent=frame.sequence;$('resolution').textContent=`${frame.width} × ${frame.height}`;
+        $('fps').textContent=data.average_fps+' FPS';$('age').textContent=frame.age_seconds+' 秒前';
+        $('timestamp').textContent=frame.camera_timestamp;
+        $('state').textContent=data.connected?'接收中':'数据已中断';$('state').className=data.connected?'live':'bad';
+      }catch(error){$('state').textContent='后端不可用：'+error.message;$('state').className='bad'}
+      finally{setTimeout(refresh,500)}
+    }
+    refresh();
+  </script>
+</body>
+</html>

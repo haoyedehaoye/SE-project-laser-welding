@@ -1,0 +1,42 @@
+[system]
+name = "激光焊接设备监控系统"
+log_level = "INFO"
+log_dir = "logs"
+
+[web]
+host = "0.0.0.0"
+port = 18080
+
+[camera]
+enabled = true
+device_id = "camera-01"
+backend = "hikrobot_mvs"
+# 留空时自动选择枚举到的第一台相机；正式部署建议填写序列号。
+serial_number = ""
+ip_address = ""
+# MVS Python 示例中 MvImport 目录；留空时自动搜索标准安装目录。
+mvs_python_path = "D:\\海康机器人摄像头\\MVS\\Development\\Samples\\Python\\MvImport"
+frame_timeout_ms = 1000
+reconnect_interval_seconds = 3.0
+preview_max_fps = 15.0
+png_compression = 3
+packet_size_auto = true
+
+[current]
+# 真实 STM32 协议确认后启用；simulated=true 仅用于联调，禁止与真实数据混存。
+enabled = false
+device_id = "stm32-01"
+port = "COM3"
+baudrate = 115200
+timeout_seconds = 0.1
+reconnect_interval_seconds = 2.0
+simulated = false
+sample_rate_hz = 100.0
+
+[analysis]
+enabled = true
+model_dir = "models"
+
+[storage]
+recording_dir = "recordings"
+retention_days = 3

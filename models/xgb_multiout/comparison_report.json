@@ -1,0 +1,81 @@
+{
+  "dataset": "D:\\SEproject\\dataset\\online\\对激光焊接的钢-铜搭接接头的数据集\\Definitive screening steel-copper lap joints V1.xlsx",
+  "task": "crack_classification",
+  "protocol": "GroupKFold(5) by weld number, seed=42",
+  "input_features": [
+    "power",
+    "speed",
+    "gas_flow",
+    "focal",
+    "angular",
+    "thickness",
+    "cross_section_mm"
+  ],
+  "n_rows": 360,
+  "n_crack": 50,
+  "n_welds": 5,
+  "models": {
+    "XGBoost": {
+      "n": 360,
+      "pos_rate": 0.1389,
+      "accuracy": 0.9556,
+      "balanced_accuracy": 0.9658,
+      "f1": 0.8596,
+      "roc_auc": 0.9795,
+      "pr_auc": 0.8241,
+      "weld_accuracy": 1.0,
+      "n_welds": 5,
+      "elapsed_s": 3.2
+    },
+    "RandomForest": {
+      "n": 360,
+      "pos_rate": 0.1389,
+      "accuracy": 0.9556,
+      "balanced_accuracy": 0.9658,
+      "f1": 0.8596,
+      "roc_auc": 0.9806,
+      "pr_auc": 0.8601,
+      "weld_accuracy": 1.0,
+      "n_welds": 5,
+      "elapsed_s": 4.6
+    },
+    "ExtraTrees": {
+      "n": 360,
+      "pos_rate": 0.1389,
+      "accuracy": 0.9556,
+      "balanced_accuracy": 0.9658,
+      "f1": 0.8596,
+      "roc_auc": 0.9813,
+      "pr_auc": 0.857,
+      "weld_accuracy": 1.0,
+      "n_welds": 5,
+      "elapsed_s": 3.5
+    },
+    "HistGB": {
+      "n": 360,
+      "pos_rate": 0.1389,
+      "accuracy": 0.9583,
+      "balanced_accuracy": 0.9423,
+      "f1": 0.8598,
+      "roc_auc": 0.9802,
+      "pr_auc": 0.8216,
+      "weld_accuracy": 1.0,
+      "n_welds": 5,
+      "elapsed_s": 7.3
+    },
+    "LogisticReg": {
+      "n": 360,
+      "pos_rate": 0.1389,
+      "accuracy": 0.9389,
+      "balanced_accuracy": 0.9645,
+      "f1": 0.8197,
+      "roc_auc": 0.9798,
+      "pr_auc": 0.7805,
+      "weld_accuracy": 1.0,
+      "n_welds": 5,
+      "elapsed_s": 0.0
+    }
+  },
+  "best_by_auc": "ExtraTrees",
+  "trained_at": "2026-09-03 02:14:37"
+}

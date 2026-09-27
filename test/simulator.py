@@ -26,21 +26,21 @@ except ImportError:
 
 FRAME_INTERVAL = 0.1          # 发送间隔（秒），10Hz
 TEMP_BASE = 42.0              # 模拟温度基线（°C）
-HUMI_BASE = 58.0              # 模拟湿度基线（%）
+VOLTAGE_BASE = 25.0              # 模拟电压基线（%）
 
 
-def _build_frame(temp: float, humidity: float, status: int) -> bytes:
+def _build_frame(temp: float, voltage: float, status: int) -> bytes:
     """
     按协议拼一帧。这是你拿到真协议后唯一要改的函数。
     协议格式：
-      帧头(1B) + 温度(int16, 0.1°C) + 湿度(uint16, 0.1%) + 状态(uint8) + 校验(XOR,1B) + 帧尾(1B)
+      帧头(1B) + 温度(int16, 0.1°C) + 电压(uint16, 0.1V) + 状态(uint8) + 校验(XOR,1B) + 帧尾(1B)
     """
     temp_scaled   = int(temp * 10)          # 42.5 → 425
-    humi_scaled   = int(humidity * 10)      # 58.3 → 583
+    voltage_scaled   = int(voltage * 10)      # 58.3 → 583
 
     # 5 字节数据段（不含头尾）
-    data = struct.pack(">hHB", temp_scaled, humi_scaled, status)
-    #       大端: 温度 int16, 湿度 uint16, 状态 uint8
+    data = struct.pack(">hHB", temp_scaled, voltage_scaled, status)
+    #       大端: 温度 int16, 电压 uint16, 状态 uint8
 
     checksum = 0
     for b in data:
@@ -82,7 +82,7 @@ def main():
     print(f"采集器已连接: {addr}\n")
 
     temp_prev = TEMP_BASE
-    humi_prev = HUMI_BASE
+    voltage_prev = VOLTAGE_BASE
     seq = 0
 
     def shutdown(sig, frame):
@@ -98,14 +98,14 @@ def main():
         while True:
             seq += 1
             temp = _random_walk(TEMP_BASE, 2.0, temp_prev)
-            humi = _random_walk(HUMI_BASE, 5.0, humi_prev)
+            voltage = _random_walk(VOLTAGE_BASE, 3.0, voltage_prev)
             status = 0b010        # bit1=1 → 运行中
-            temp_prev, humi_prev = temp, humi
+            temp_prev, voltage_prev = temp, voltage
 
-            frame = _build_frame(temp, humi, status)
+            frame = _build_frame(temp, voltage, status)
             conn.sendall(frame)
 
-            print(f"[{seq:04d}] → 温度={temp:.1f}°C  湿度={humi:.1f}%  "
+            print(f"[{seq:04d}] → 温度={temp:.1f}°C  电压={voltage:.1f}V  "
                   f"状态={status:#05b}  HEX: {_format_frame(frame)}")
 
             time.sleep(FRAME_INTERVAL)

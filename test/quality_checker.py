@@ -66,7 +66,7 @@ class RuleBasedQualityChecker(BaseQualityChecker):
     多维度规则检测。
 
     检测维度：
-      1. 范围检测  — 温度/湿度是否在物理合理范围内
+      1. 范围检测  — 温度/电压是否在物理合理范围内
       2. 变化率    — 相邻帧跳变是否超过阈值（传感器故障/接触不良）
       3. 冻结检测  — 连续 N 帧数值不变（传感器卡死）
 
@@ -81,30 +81,30 @@ class RuleBasedQualityChecker(BaseQualityChecker):
         self,
         # 合理范围
         temp_range: tuple[float, float] = (-20.0, 85.0),
-        humi_range: tuple[float, float] = (0.0, 100.0),
+        voltage_range: tuple[float, float] = (0.0, 60.0),
         # 变化率阈值（相邻帧最大允许变化）
         max_temp_delta: float = 5.0,         # °C
-        max_humi_delta: float = 10.0,        # %
+        max_voltage_delta: float = 3.0,        # %
         # 冻结检测
         freeze_window: int = 8,              # 连续多少帧不变视为冻结
         freeze_temp_tol: float = 0.2,        # 温度视为"不变"的容差
-        freeze_humi_tol: float = 0.5,        # 湿度视为"不变"的容差
+        freeze_voltage_tol: float = 0.2,        # 电压视为"不变"的容差
         # 历史窗口大小（用于统计，0=不限制）
         history_size: int = 64,
     ) -> None:
         self.temp_range = temp_range
-        self.humi_range = humi_range
+        self.voltage_range = voltage_range
         self.max_temp_delta = max_temp_delta
-        self.max_humi_delta = max_humi_delta
+        self.max_voltage_delta = max_voltage_delta
         self.freeze_window = freeze_window
         self.freeze_temp_tol = freeze_temp_tol
-        self.freeze_humi_tol = freeze_humi_tol
+        self.freeze_voltage_tol = freeze_voltage_tol
 
         # 内部状态
         self._history: deque[DataPoint] = deque(maxlen=history_size or 64)
         self._freeze_counter: int = 0
         self._last_temp: Optional[float] = None
-        self._last_humi: Optional[float] = None
+        self._last_voltage: Optional[float] = None
 
         # 统计
         self.total_checked: int = 0
@@ -116,7 +116,7 @@ class RuleBasedQualityChecker(BaseQualityChecker):
 
     def check(self, dp: DataPoint) -> QualityResult:
         temp = dp.data.get("temperature")
-        humi = dp.data.get("humidity")
+        voltage = dp.data.get("voltage")
         flags: list[str] = []
         details: dict = {}
 
@@ -128,12 +128,12 @@ class RuleBasedQualityChecker(BaseQualityChecker):
                 details["temp"] = temp
                 details["temp_range"] = [lo, hi]
 
-        if humi is not None:
-            lo, hi = self.humi_range
-            if humi < lo or humi > hi:
-                flags.append("humidity_out_of_range")
-                details["humidity"] = humi
-                details["humi_range"] = [lo, hi]
+        if voltage is not None:
+            lo, hi = self.voltage_range
+            if voltage < lo or voltage > hi:
+                flags.append("voltage_out_of_range")
+                details["voltage"] = voltage
+                details["voltage_range"] = [lo, hi]
 
         # 2) 变化率检测（需要前一帧）
         if self._last_temp is not None and temp is not None:
@@ -144,20 +144,20 @@ class RuleBasedQualityChecker(BaseQualityChecker):
                 details["temp_prev"] = self._last_temp
                 details["temp_curr"] = temp
 
-        if self._last_humi is not None and humi is not None:
-            delta = abs(humi - self._last_humi)
-            if delta > self.max_humi_delta:
-                flags.append("humi_rapid_change")
-                details["humi_delta"] = round(delta, 2)
-                details["humi_prev"] = self._last_humi
-                details["humi_curr"] = humi
+        if self._last_voltage is not None and voltage is not None:
+            delta = abs(voltage - self._last_voltage)
+            if delta > self.max_voltage_delta:
+                flags.append("voltage_rapid_change")
+                details["voltage_delta"] = round(delta, 2)
+                details["voltage_prev"] = self._last_voltage
+                details["voltage_curr"] = voltage
 
         # 3) 冻结检测
-        if temp is not None and humi is not None:
+        if temp is not None and voltage is not None:
             if (
                 self._last_temp is not None
                 and abs(temp - self._last_temp) < self.freeze_temp_tol
-                and abs(humi - self._last_humi) < self.freeze_humi_tol
+                and abs(voltage - self._last_voltage) < self.freeze_voltage_tol
             ):
                 self._freeze_counter += 1
             else:
@@ -182,7 +182,7 @@ class RuleBasedQualityChecker(BaseQualityChecker):
 
         # 5) 更新内部状态
         self._last_temp = temp
-        self._last_humi = humi
+        self._last_voltage = voltage
         self._history.append(dp)
         self.total_checked += 1
 
@@ -194,7 +194,7 @@ class RuleBasedQualityChecker(BaseQualityChecker):
         self._history.clear()
         self._freeze_counter = 0
         self._last_temp = None
-        self._last_humi = None
+        self._last_voltage = None
 
     # ---- 统计快照 ----
 
@@ -223,7 +223,7 @@ class MLQualityChecker(BaseQualityChecker):
         checker = MLQualityChecker(model_path="models/quality.onnx")
         collector.set_quality_checker(checker)
 
-    模型输入：最近 N 帧的特征向量（温度、湿度、状态位、时间间隔等）
+    模型输入：最近 N 帧的特征向量（温度、电压、状态位、时间间隔等）
     模型输出：质量分数 0~1
 
     TODO: 接入实际模型

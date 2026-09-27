@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>机器人焊接监控仪表盘</title>
+<title data-i18n="title">机器人激光焊接 · 实时监控</title>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <style>
   :root {
@@ -35,22 +35,21 @@
     background: var(--green); margin-right: 6px;
     animation: pulse 1.8s infinite;
   }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.35; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  #lang_btn {
+    background: var(--card-bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer;
   }
+  #lang_btn:hover { border-color: var(--blue); }
   .grid { display: grid; gap: 14px; }
-  /* 桌面：4列 */
   @media (min-width: 1200px) {
     .grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
     .chart-row { grid-column: span 4; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   }
-  /* 平板：2列 */
   @media (min-width: 768px) and (max-width: 1199px) {
     .grid { grid-template-columns: 1fr 1fr; }
     .chart-row { grid-column: span 2; display: grid; grid-template-columns: 1fr; gap: 14px; }
   }
-  /* 手机：1列 */
   @media (max-width: 767px) {
     .grid { grid-template-columns: 1fr; }
   }
@@ -67,7 +66,7 @@
   .kpi { font-size: 36px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .kpi.unit::after { font-size: 16px; font-weight: 400; color: var(--text-muted); margin-left: 4px; }
   .kpi.temp::after { content: '°C'; }
-  .kpi.humi::after { content: '%'; }
+  .kpi.voltage::after { content: 'V'; }
   .badge {
     display: inline-block; padding: 2px 10px; border-radius: 12px;
     font-size: 12px; font-weight: 600; margin-right: 6px;
@@ -97,6 +96,35 @@
   .status-label { font-size: 11px; color: var(--text-muted); }
   .fps { font-size: 13px; color: var(--text-muted); }
   .fps span { color: var(--text); font-weight: 600; }
+  .video-layout { display:grid; grid-template-columns:minmax(0,3fr) minmax(250px,1fr); gap:14px; }
+  .video-preview { min-height:320px; background:#05080e; border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .video-preview img { display:none; width:100%; max-height:520px; object-fit:contain; }
+  #video_placeholder { color:var(--text-muted); padding:20px; text-align:center; }
+  .video-side { display:flex; flex-direction:column; gap:10px; }
+  .video-status { display:grid; grid-template-columns:82px 1fr; gap:7px; font-size:12px; }
+  .video-status dt { color:var(--text-muted); }
+  .video-status dd { margin:0; overflow-wrap:anywhere; }
+  .video-controls { display:flex; flex-wrap:wrap; gap:8px; }
+  .video-button { border:0; border-radius:7px; padding:8px 12px; color:white; background:#2368c4; cursor:pointer; }
+  .video-button.stop { background:#a83c48; }
+  .video-button.secondary { background:#39424f; }
+  .video-button:disabled { opacity:.45; cursor:not-allowed; }
+  #video_action, #video_devices { min-height:18px; color:var(--text-muted); font-size:12px; line-height:1.5; }
+  @media (max-width: 850px) { .video-layout { grid-template-columns:1fr; } .video-preview { min-height:240px; } }
+  .thermal-layout { display:grid; grid-template-columns:minmax(0,3fr) minmax(260px,1fr); gap:14px; }
+  .thermal-preview { min-height:320px; background:#05080e; border:1px solid var(--border); border-radius:8px; display:grid; place-items:center; overflow:hidden; }
+  #thermal_canvas { display:none; width:100%; max-height:520px; object-fit:contain; image-rendering:pixelated; }
+  #thermal_placeholder { color:var(--text-muted); padding:20px; text-align:center; }
+  .thermal-legend { height:12px; border-radius:8px; margin-top:10px; background:linear-gradient(90deg,#172a76,#165ed3,#17c2d6,#e3df4d,#e34a27); }
+  .thermal-range { display:flex; justify-content:space-between; color:var(--text-muted); font-size:12px; margin-top:4px; }
+  .thermal-stats { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  .thermal-stat { padding:10px; border:1px solid var(--border); border-radius:7px; }
+  .thermal-stat small { display:block; color:var(--text-muted); margin-bottom:4px; }
+  .thermal-stat strong { font-size:19px; }
+  .thermal-details { display:grid; grid-template-columns:90px 1fr; gap:7px; font-size:12px; margin-top:12px; }
+  .thermal-details dt { color:var(--text-muted); }
+  .thermal-details dd { margin:0; }
+  @media (max-width: 850px) { .thermal-layout { grid-template-columns:1fr; } .thermal-preview { min-height:240px; } }
 </style>
 </head>
 <body>
@@ -104,81 +132,132 @@
 <div class="header">
   <h1>
     <span class="dot"></span>
-    机器人激光焊接 · 实时监控
+    <span data-i18n="title">机器人激光焊接 · 实时监控</span>
   </h1>
-  <div class="fps">
-    数据频率 <span id="fps_val">--</span> FPS &nbsp;|&nbsp;
-    客户端 <span id="client_count">1</span>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="fps">
+      <span data-i18n="fps">数据频率</span> <span id="fps_val">--</span> FPS &nbsp;|&nbsp;
+      <span data-i18n="clients">客户端</span> <span id="client_count">1</span>
+    </div>
+    <button id="lang_btn" title="Switch language">EN</button>
   </div>
 </div>
 
 <div class="grid">
 
-  <!-- KPI 卡：温度 -->
   <div class="card">
-    <div class="title">🌡 实时温度</div>
+    <div class="title" data-i18n="kpi_temp">🌡 实时温度</div>
     <div class="kpi temp" id="kpi_temp">--</div>
-    <div style="margin-top:6px;">
-      <span class="badge" id="temp_quality">--</span>
-    </div>
+    <div style="margin-top:6px;"><span class="badge" id="temp_quality">--</span></div>
   </div>
 
-  <!-- KPI 卡：湿度 -->
   <div class="card">
-    <div class="title">💧 实时湿度</div>
-    <div class="kpi humi" id="kpi_humi">--</div>
-    <div style="margin-top:6px;">
-      <span class="badge" id="humi_quality">--</span>
-    </div>
+    <div class="title" data-i18n="kpi_voltage">💧 实时电压</div>
+    <div class="kpi voltage" id="kpi_voltage">--</div>
+    <div style="margin-top:6px;"><span class="badge" id="voltage_quality">--</span></div>
   </div>
 
-  <!-- KPI 卡：质量分数 -->
   <div class="card">
-    <div class="title">✅ 质量评分</div>
+    <div class="title" data-i18n="kpi_score">✔ 质量评分</div>
     <div class="kpi" id="kpi_score" style="color:var(--green);">--</div>
     <div style="margin-top:6px;font-size:13px;color:var(--text-muted);" id="kpi_flags"></div>
   </div>
 
-  <!-- 状态指示 -->
   <div class="card">
-    <div class="title">📡 设备状态</div>
+    <div class="title" data-i18n="status_title">📟 设备状态</div>
     <div class="status-row">
       <div class="status-item">
         <div class="status-light off" id="light_running"></div>
-        <div class="status-label">运行中</div>
+        <div class="status-label" data-i18n="running">运行中</div>
       </div>
       <div class="status-item">
         <div class="status-light off" id="light_emergency"></div>
-        <div class="status-label">急停</div>
+        <div class="status-label" data-i18n="emergency">急停</div>
       </div>
       <div class="status-item">
         <div class="status-light off" id="light_fault"></div>
-        <div class="status-label">故障</div>
+        <div class="status-label" data-i18n="fault">故障</div>
       </div>
     </div>
   </div>
 
-  <!-- 图表行 -->
   <div class="chart-row">
     <div class="card">
-      <div class="title">📈 温度趋势（最近 200 点）</div>
+      <div class="title" data-i18n="chart_temp">🌡 温度趋势（最近 200 点）</div>
       <div class="chart-box" id="chart_temp"></div>
     </div>
     <div class="card">
-      <div class="title">📈 湿度趋势（最近 200 点）</div>
-      <div class="chart-box" id="chart_humi"></div>
+      <div class="title" data-i18n="chart_voltage">💧 电压趋势（最近 200 点）</div>
+      <div class="chart-box" id="chart_voltage"></div>
     </div>
   </div>
 
-  <!-- 质量饼图 + 异常告警 -->
   <div class="card" style="grid-column: span 1;">
-    <div class="title">🥧 数据质量分布</div>
+    <div class="title" data-i18n="chart_quality">🐞 数据质量分布</div>
     <div class="chart-box" id="chart_quality" style="height:240px;"></div>
   </div>
   <div class="card" style="grid-column: span 3;">
-    <div class="title">🚨 异常告警（最近 50 条）</div>
+    <div class="title" data-i18n="alerts_title">🐞 异常告警（最近 50 条）</div>
     <div class="alert-list" id="alert_list">
-      <div style="color:var(--text-muted);padding:20px;text-align:center;">暂无告警</div>
+      <div style="color:var(--text-muted);padding:20px;text-align:center;" data-i18n="no_alert">暂无告警</div>
+    </div>
+  </div>
+
+  <div class="card" style="grid-column: span 4;">
+    <div class="title" data-i18n="video_title">🎥 工业相机实时画面</div>
+    <div class="video-layout">
+      <div class="video-preview">
+        <div id="video_placeholder" data-i18n="video_waiting">正在等待相机画面…</div>
+        <img id="video_feed" alt="工业相机实时画面">
+      </div>
+      <div class="video-side">
+        <dl class="video-status">
+          <dt data-i18n="video_state">状态</dt><dd id="video_state">--</dd>
+          <dt data-i18n="video_message">信息</dt><dd id="video_message">--</dd>
+          <dt data-i18n="video_model">型号</dt><dd id="video_model">--</dd>
+          <dt data-i18n="video_ip">IP地址</dt><dd id="video_ip">--</dd>
+          <dt data-i18n="video_resolution">分辨率</dt><dd id="video_resolution">--</dd>
+          <dt data-i18n="video_frames">接收帧数</dt><dd id="video_frames">0</dd>
+          <dt data-i18n="video_fps">平均帧率</dt><dd id="video_fps">0</dd>
+        </dl>
+        <div class="video-controls">
+          <button class="video-button" id="video_start" data-i18n="video_start">启动相机</button>
+          <button class="video-button stop" id="video_stop" data-i18n="video_stop">停止相机</button>
+          <button class="video-button secondary" id="video_discover" data-i18n="video_discover">重新枚举</button>
+        </div>
+        <div id="video_action"></div>
+        <div id="video_devices"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="grid-column: 1 / -1;">
+    <div class="title" data-i18n="thermal_title">🌡 热像仪温度矩阵</div>
+    <div class="thermal-layout">
+      <div>
+        <div class="thermal-preview">
+          <canvas id="thermal_canvas" aria-label="二维温度热图"></canvas>
+          <div id="thermal_placeholder" data-i18n="thermal_waiting">等待温度矩阵…</div>
+        </div>
+        <div class="thermal-legend"></div>
+        <div class="thermal-range"><span id="thermal_range_min">-- °C</span><span id="thermal_range_max">-- °C</span></div>
+      </div>
+      <div>
+        <div class="thermal-stats">
+          <div class="thermal-stat"><small data-i18n="thermal_min">最低温度</small><strong id="thermal_min">--</strong></div>
+          <div class="thermal-stat"><small data-i18n="thermal_max">最高温度</small><strong id="thermal_max">--</strong></div>
+          <div class="thermal-stat"><small data-i18n="thermal_avg">平均温度</small><strong id="thermal_avg">--</strong></div>
+          <div class="thermal-stat"><small data-i18n="thermal_frames">接收帧数</small><strong id="thermal_frames">0</strong></div>
+        </div>
+        <dl class="thermal-details">
+          <dt data-i18n="thermal_state">状态</dt><dd id="thermal_state">--</dd>
+          <dt data-i18n="thermal_sequence">帧号</dt><dd id="thermal_sequence">--</dd>
+          <dt data-i18n="thermal_resolution">矩阵尺寸</dt><dd id="thermal_resolution">--</dd>
+          <dt data-i18n="thermal_fps">平均帧率</dt><dd id="thermal_fps">--</dd>
+          <dt data-i18n="thermal_gaps">帧号缺口</dt><dd id="thermal_gaps">0</dd>
+          <dt data-i18n="thermal_age">最近收帧</dt><dd id="thermal_age">--</dd>
+        </dl>
+      </div>
     </div>
   </div>
 
@@ -186,25 +265,81 @@
 
 <script>
 // ============================================================
-// 全局状态
+// ECharts fallback: keep the data UI working when the CDN is offline.
+// ============================================================
+if (typeof echarts === 'undefined') {
+  function __echartsNoop() {}
+  window.echarts = {
+    init: function () { return { setOption: __echartsNoop, resize: __echartsNoop }; },
+    graphic: { LinearGradient: function () { return {}; } },
+  };
+  console.warn('[dashboard] ECharts CDN unavailable; charts disabled, data feed unaffected.');
+}
+
+// ============================================================
+// i18n (Chinese / English)
+// ============================================================
+const I18N = {
+  zh: {
+    title: '机器人激光焊接 · 实时监控', fps: '数据频率', clients: '客户端',
+    kpi_temp: '🌡 实时温度', kpi_voltage: '💧 实时电压', kpi_score: '✔ 质量评分',
+    status_title: '📟 设备状态', running: '运行中', emergency: '急停', fault: '故障',
+    chart_temp: '🌡 温度趋势（最近 200 点）', chart_voltage: '💧 电压趋势（最近 200 点）',
+    chart_quality: '🐞 数据质量分布', alerts_title: '🐞 异常告警（最近 50 条）',
+    normal: '正常', suspicious: '可疑', anomaly: '异常', no_alert: '暂无告警', no_flag: '无异常',
+    video_title: '🎥 工业相机实时画面', video_waiting: '正在等待相机画面…',
+    video_state: '状态', video_message: '信息', video_model: '型号', video_ip: 'IP地址',
+    video_resolution: '分辨率', video_frames: '接收帧数', video_fps: '平均帧率',
+    video_start: '启动相机', video_stop: '停止相机', video_discover: '重新枚举',
+    temp_axis: '温度', voltage_axis: '电压',
+    thermal_title: '🌡 热像仪温度矩阵', thermal_waiting: '等待温度矩阵…',
+    thermal_min: '最低温度', thermal_max: '最高温度', thermal_avg: '平均温度',
+    thermal_frames: '接收帧数', thermal_state: '状态', thermal_sequence: '帧号',
+    thermal_resolution: '矩阵尺寸', thermal_fps: '平均帧率', thermal_gaps: '帧号缺口',
+    thermal_age: '最近收帧', thermal_receiving: '接收中', thermal_stale: '温度数据已中断',
+    thermal_unavailable: '温度接口不可用',
+  },
+  en: {
+    title: 'Laser Welding Robot · Live Monitor', fps: 'Data rate', clients: 'Clients',
+    kpi_temp: '🌡 Live Temperature', kpi_voltage: '💧 Live Voltage', kpi_score: '✔ Quality Score',
+    status_title: '📟 Device Status', running: 'Running', emergency: 'E-Stop', fault: 'Fault',
+    chart_temp: '🌡 Temperature Trend (last 200)', chart_voltage: '💧 Voltage Trend (last 200)',
+    chart_quality: '🐞 Quality Distribution', alerts_title: '🐞 Alerts (last 50)',
+    normal: 'Normal', suspicious: 'Suspicious', anomaly: 'Anomaly', no_alert: 'No alerts', no_flag: 'No flags',
+    video_title: '🎥 Industrial Camera Live View', video_waiting: 'Waiting for camera frames…',
+    video_state: 'State', video_message: 'Message', video_model: 'Model', video_ip: 'IP address',
+    video_resolution: 'Resolution', video_frames: 'Frames', video_fps: 'Average FPS',
+    video_start: 'Start camera', video_stop: 'Stop camera', video_discover: 'Discover',
+    temp_axis: 'Temperature', voltage_axis: 'Voltage',
+    thermal_title: '🌡 Thermal camera matrix', thermal_waiting: 'Waiting for thermal frames…',
+    thermal_min: 'Minimum', thermal_max: 'Maximum', thermal_avg: 'Average',
+    thermal_frames: 'Frames received', thermal_state: 'Status', thermal_sequence: 'Sequence',
+    thermal_resolution: 'Matrix size', thermal_fps: 'Average FPS', thermal_gaps: 'Sequence gaps',
+    thermal_age: 'Last frame', thermal_receiving: 'Receiving', thermal_stale: 'Thermal data stopped',
+    thermal_unavailable: 'Thermal API unavailable',
+  },
+};
+let lang = localStorage.getItem('lang') ||
+  ((navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+const T = () => I18N[lang];
+
+// ============================================================
+// Global state
 // ============================================================
 const MAX_POINTS = 200;
 const history = {
-  timestamps: [],
-  temperatures: [],
-  humidities: [],
-  scores: [],
-  qualities: [],
+  timestamps: [], temperatures: [], voltages: [], scores: [], qualities: [],
 };
 const alerts = [];
 let latestDp = null;
 let normalCount = 0, suspiciousCount = 0, anomalyCount = 0;
+let videoStatus = null;
 
 // ============================================================
-// ECharts 初始化
+// ECharts init
 // ============================================================
 const chartTemp = echarts.init(document.getElementById('chart_temp'));
-const chartHumi = echarts.init(document.getElementById('chart_humi'));
+const chartVoltage = echarts.init(document.getElementById('chart_voltage'));
 const chartQuality = echarts.init(document.getElementById('chart_quality'));
 
 const darkTheme = {
@@ -259,7 +394,6 @@ function makeLineOpt(title, yName, color, data, markAreas = []) {
   };
 }
 
-// 质量饼图
 const pieOpt = {
   backgroundColor: 'transparent',
   tooltip: {
@@ -283,26 +417,24 @@ const pieOpt = {
     ],
   }],
 };
-
 chartQuality.setOption(pieOpt);
 
-// 响应式
 window.addEventListener('resize', () => {
   chartTemp.resize();
-  chartHumi.resize();
+  chartVoltage.resize();
   chartQuality.resize();
 });
 
 // ============================================================
-// 更新 UI
+// UI updates
 // ============================================================
 function updateKPIs(dp) {
   const t = dp.data.temperature;
-  const h = dp.data.humidity;
+  const v = dp.data.voltage;
   const q = dp.quality;
 
   document.getElementById('kpi_temp').textContent = t != null ? t.toFixed(1) : '--';
-  document.getElementById('kpi_humi').textContent = h != null ? h.toFixed(1) : '--';
+  document.getElementById('kpi_voltage').textContent = v != null ? v.toFixed(1) : '--';
 
   if (q) {
     const scoreEl = document.getElementById('kpi_score');
@@ -313,38 +445,33 @@ function updateKPIs(dp) {
 
     document.getElementById('kpi_flags').textContent = q.flags.length
       ? '⚠ ' + q.flags.join(', ')
-      : '无异常';
+      : T().no_flag;
 
-    // 质量标签
     const tq = document.getElementById('temp_quality');
     tq.textContent = q.label;
     tq.className = 'badge ' + q.label;
-    document.getElementById('humi_quality').textContent = q.label;
-    document.getElementById('humi_quality').className = 'badge ' + q.label;
+    const vq = document.getElementById('voltage_quality');
+    vq.textContent = q.label;
+    vq.className = 'badge ' + q.label;
   }
 
-  // 状态灯
-  const d = dp.data;
-  setLight('light_running', d.is_running ? 'on' : 'off');
-  setLight('light_emergency', d.is_emergency ? 'error' : 'off');
-  setLight('light_fault', d.is_fault ? 'error' : 'off');
+  setLight('light_running', dp.data.is_running ? 'on' : 'off');
+  setLight('light_emergency', dp.data.is_emergency ? 'error' : 'off');
+  setLight('light_fault', dp.data.is_fault ? 'error' : 'off');
 }
 
 function setLight(id, state) {
-  const el = document.getElementById(id);
-  el.className = 'status-light ' + state;
+  document.getElementById(id).className = 'status-light ' + state;
 }
 
 function updateCharts() {
-  const ts = history.timestamps;
-  const labels = ts.map(t => {
+  const labels = history.timestamps.map(t => {
     const d = new Date(t * 1000);
-    return d.getHours().toString().padStart(2,'0') + ':'
-         + d.getMinutes().toString().padStart(2,'0') + ':'
-         + d.getSeconds().toString().padStart(2,'0');
+    return d.getHours().toString().padStart(2, '0') + ':'
+      + d.getMinutes().toString().padStart(2, '0') + ':'
+      + d.getSeconds().toString().padStart(2, '0');
   });
 
-  // 温度异常区域
   const tempMarkAreas = [];
   for (let i = 0; i < history.qualities.length; i++) {
     const q = history.qualities[i];
@@ -353,61 +480,165 @@ function updateCharts() {
     }
   }
 
-  chartTemp.setOption(makeLineOpt('温度', '°C', '#58a6ff', history.temperatures.map((v, i) => [labels[i], v]), tempMarkAreas), true);
-  chartHumi.setOption(makeLineOpt('湿度', '%', '#bc8cff', history.humidities.map((v, i) => [labels[i], v])), true);
+  chartTemp.setOption(makeLineOpt(T().temp_axis, '°C', '#58a6ff',
+    history.temperatures.map((v, i) => [labels[i], v]), tempMarkAreas), true);
+  chartVoltage.setOption(makeLineOpt(T().voltage_axis, 'V', '#bc8cff',
+    history.voltages.map((v, i) => [labels[i], v])), true);
 
-  // 质量饼图
   const total = normalCount + suspiciousCount + anomalyCount || 1;
   chartQuality.setOption({
     series: [{
       data: [
-        { value: normalCount, name: '正常' },
-        { value: suspiciousCount, name: '可疑' },
-        { value: anomalyCount, name: '异常' },
+        { value: normalCount, name: T().normal },
+        { value: suspiciousCount, name: T().suspicious },
+        { value: anomalyCount, name: T().anomaly },
       ],
     }],
   });
 }
 
-function addAlert(dp) {
-  const q = dp.quality;
-  if (!q || q.label === 'normal') return;
-
-  const d = new Date(dp.timestamp * 1000);
-  const timeStr = d.getHours().toString().padStart(2,'0') + ':'
-                + d.getMinutes().toString().padStart(2,'0') + ':'
-                + d.getSeconds().toString().padStart(2,'0');
-
-  alerts.unshift({
-    time: timeStr,
-    label: q.label,
-    score: q.score,
-    flags: q.flags,
-    temp: dp.data.temperature,
-    humi: dp.data.humidity,
-  });
-
-  if (alerts.length > 50) alerts.length = 50;
-
+function renderAlerts() {
   const container = document.getElementById('alert_list');
   if (alerts.length === 0) {
-    container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">暂无告警</div>';
+    container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">'
+      + T().no_alert + '</div>';
     return;
   }
-
   container.innerHTML = alerts.map(a => `
     <div class="alert-item">
       <span class="time">${a.time}</span>
       <span class="badge ${a.label}">${a.label}</span>
       <span class="msg">
         temp=${a.temp != null ? a.temp.toFixed(1) + '°C' : '--'},
-        humi=${a.humi != null ? a.humi.toFixed(1) + '%' : '--'}
+        voltage=${a.voltage != null ? a.voltage.toFixed(1) + 'V' : '--'}
         ${a.flags.length ? ' | ' + a.flags.join(', ') : ''}
       </span>
-      <span style="color:var(--text-muted);font-size:12px;">${(a.score*100).toFixed(0)}%</span>
+      <span style="color:var(--text-muted);font-size:12px;">${(a.score * 100).toFixed(0)}%</span>
     </div>
   `).join('');
 }
+
+function addAlert(dp) {
+  const q = dp.quality;
+  if (!q || q.label === 'normal') return;
+  const d = new Date(dp.timestamp * 1000);
+  alerts.unshift({
+    time: d.getHours().toString().padStart(2, '0') + ':' +
+      d.getMinutes().toString().padStart(2, '0') + ':' +
+      d.getSeconds().toString().padStart(2, '0'),
+    label: q.label,
+    score: q.score,
+    flags: q.flags,
+    temp: dp.data.temperature,
+    voltage: dp.data.voltage,
+  });
+  if (alerts.length > 50) alerts.length = 50;
+  renderAlerts();
+}
+
+// ============================================================
+// Language switching
+// ============================================================
+function applyLang() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (I18N[lang][key] !== undefined) el.textContent = I18N[lang][key];
+  });
+  const btn = document.getElementById('lang_btn');
+  if (btn) btn.textContent = lang === 'zh' ? 'EN' : '中文';
+
+  updateCharts();
+  renderAlerts();
+  if (videoStatus) renderVideoStatus(videoStatus);
+  document.title = T().title;
+}
+
+document.getElementById('lang_btn').addEventListener('click', () => {
+  lang = lang === 'zh' ? 'en' : 'zh';
+  localStorage.setItem('lang', lang);
+  applyLang();
+});
+
+// ============================================================
+// Industrial camera video panel
+// ============================================================
+async function loadVideoStatus() {
+  try {
+    const resp = await fetch('/api/video/status', {cache: 'no-store'});
+    videoStatus = await resp.json();
+    renderVideoStatus(videoStatus);
+  } catch (e) {
+    document.getElementById('video_message').textContent = '后端视频服务不可用';
+  }
+}
+
+let videoStreamStarted = false;
+function renderVideoStatus(status) {
+  const device = status.device || {};
+  const feed = document.getElementById('video_feed');
+  const placeholder = document.getElementById('video_placeholder');
+  document.getElementById('video_state').textContent = status.state || '--';
+  document.getElementById('video_message').textContent = status.message || status.last_error || '--';
+  document.getElementById('video_model').textContent = device.model || '--';
+  document.getElementById('video_ip').textContent = device.ip_address || '--';
+  document.getElementById('video_resolution').textContent = status.width ? `${status.width} × ${status.height}` : '--';
+  document.getElementById('video_frames').textContent = status.frames_received ?? 0;
+  document.getElementById('video_fps').textContent = status.average_fps ?? 0;
+  document.getElementById('video_start').disabled = Boolean(status.requested_on);
+  document.getElementById('video_stop').disabled = !status.requested_on;
+  if (status.connected && !videoStreamStarted) {
+    feed.src = '/api/video/stream?t=' + Date.now();
+    videoStreamStarted = true;
+  }
+  if (!status.requested_on) {
+    feed.removeAttribute('src');
+    videoStreamStarted = false;
+    placeholder.textContent = lang === 'zh' ? '相机已停止' : 'Camera stopped';
+  } else if (!status.connected) {
+    placeholder.textContent = status.message || T().video_waiting;
+  }
+  feed.style.display = status.connected ? 'block' : 'none';
+  placeholder.style.display = status.connected ? 'none' : 'block';
+}
+
+async function controlVideo(action) {
+  document.getElementById('video_start').disabled = true;
+  document.getElementById('video_stop').disabled = true;
+  const actionEl = document.getElementById('video_action');
+  actionEl.textContent = action === 'start' ? '正在启动相机…' : '正在停止相机…';
+  try {
+    const resp = await fetch(`/api/video/${action}`, {method: 'POST'});
+    const result = await resp.json();
+    if (!resp.ok) throw new Error(result.error || '操作失败');
+    actionEl.textContent = result.message || '操作完成';
+    videoStatus = result;
+    renderVideoStatus(result);
+  } catch (e) {
+    actionEl.textContent = '操作失败：' + e.message;
+  }
+}
+
+async function discoverVideoDevices() {
+  const devicesEl = document.getElementById('video_devices');
+  devicesEl.textContent = '正在枚举相机…';
+  try {
+    const resp = await fetch('/api/video/devices', {cache: 'no-store'});
+    const result = await resp.json();
+    if (!resp.ok) throw new Error(result.error || '枚举失败');
+    devicesEl.textContent = result.devices.length
+      ? result.devices.map(d => `${d.model} / ${d.serial_number} / ${d.ip_address || '-'}`).join('\n')
+      : '没有发现相机';
+  } catch (e) {
+    devicesEl.textContent = '枚举失败：' + e.message;
+  }
+}
+
+document.getElementById('video_start').addEventListener('click', () => controlVideo('start'));
+document.getElementById('video_stop').addEventListener('click', () => controlVideo('stop'));
+document.getElementById('video_discover').addEventListener('click', discoverVideoDevices);
+document.getElementById('video_feed').addEventListener('error', () => {
+  videoStreamStarted = false;
+});
 
 // ============================================================
 // WebSocket
@@ -421,10 +652,8 @@ function connectWS() {
   const ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
-    console.log('WebSocket 已连接');
+    console.log('WebSocket connected');
     document.querySelector('.dot').style.background = 'var(--green)';
-
-    // FPS 统计
     fpsCounter = 0;
     fpsTimer = setInterval(() => {
       document.getElementById('fps_val').textContent = fpsCounter;
@@ -434,64 +663,120 @@ function connectWS() {
 
   ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
-
     if (msg.type === 'stats') {
       document.getElementById('client_count').textContent = msg.data.clients;
     }
-
     if (msg.type === 'data') {
       const batch = msg.data;
       fpsCounter += batch.length;
-
       for (const dp of batch) {
         latestDp = dp;
-
-        // 更新历史
         history.timestamps.push(dp.timestamp);
         history.temperatures.push(dp.data.temperature);
-        history.humidities.push(dp.data.humidity);
+        history.voltages.push(dp.data.voltage);
         history.scores.push(dp.quality?.score ?? 1.0);
         history.qualities.push(dp.quality);
-
-        // 裁剪
         while (history.timestamps.length > MAX_POINTS) {
           history.timestamps.shift();
           history.temperatures.shift();
-          history.humidities.shift();
+          history.voltages.shift();
           history.scores.shift();
           history.qualities.shift();
         }
-
-        // 质量统计
         if (dp.quality) {
           if (dp.quality.label === 'normal') normalCount++;
           else if (dp.quality.label === 'suspicious') suspiciousCount++;
           else if (dp.quality.label === 'anomaly') anomalyCount++;
         }
-
         addAlert(dp);
       }
-
-      // 更新 UI（用最后一条）
       if (latestDp) updateKPIs(latestDp);
       updateCharts();
     }
   };
 
   ws.onclose = () => {
-    console.log('WebSocket 断开，3秒后重连...');
+    console.log('WebSocket closed; reconnecting in 3s...');
     document.querySelector('.dot').style.background = 'var(--red)';
     clearInterval(fpsTimer);
     setTimeout(connectWS, 3000);
   };
 
-  ws.onerror = (err) => {
-    console.warn('WebSocket 错误', err);
-  };
+  ws.onerror = (err) => console.warn('WebSocket error', err);
 }
 
-// 启动
+// ============================================================
+// Thermal camera matrix (independent of the STM32 data series)
+// ============================================================
+const thermalCanvas = document.getElementById('thermal_canvas');
+const thermalContext = thermalCanvas.getContext('2d');
+const thermalColors = [[23,42,118],[22,94,211],[23,194,214],[227,223,77],[227,74,39]];
+
+function thermalColor(value) {
+  const scaled = Math.max(0, Math.min(0.999999, value)) * (thermalColors.length - 1);
+  const index = Math.floor(scaled), fraction = scaled - index;
+  return thermalColors[index].map((component, channel) =>
+    Math.round(component + (thermalColors[index + 1][channel] - component) * fraction));
+}
+
+function drawThermal(grid, minimum, maximum) {
+  const height = grid.length, width = grid[0].length;
+  if (thermalCanvas.width !== width || thermalCanvas.height !== height) {
+    thermalCanvas.width = width;
+    thermalCanvas.height = height;
+  }
+  const pixels = thermalContext.createImageData(width, height);
+  const range = Math.max(maximum - minimum, 0.01);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const offset = (y * width + x) * 4;
+    const rgb = thermalColor((grid[y][x] - minimum) / range);
+    pixels.data[offset] = rgb[0];
+    pixels.data[offset + 1] = rgb[1];
+    pixels.data[offset + 2] = rgb[2];
+    pixels.data[offset + 3] = 255;
+  }
+  thermalContext.putImageData(pixels, 0, 0);
+  thermalCanvas.style.display = 'block';
+  document.getElementById('thermal_placeholder').style.display = 'none';
+}
+
+async function loadThermal() {
+  try {
+    const response = await fetch('/api/data/temperature/latest', {cache: 'no-store'});
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json(), frame = data.frame;
+    document.getElementById('thermal_frames').textContent = data.received_frames;
+    document.getElementById('thermal_gaps').textContent = data.sequence_gaps;
+    if (!frame) {
+      document.getElementById('thermal_state').textContent = T().thermal_waiting;
+      return;
+    }
+    drawThermal(frame.grid, frame.minimum_celsius, frame.maximum_celsius);
+    document.getElementById('thermal_min').textContent = frame.minimum_celsius.toFixed(2) + ' °C';
+    document.getElementById('thermal_max').textContent = frame.maximum_celsius.toFixed(2) + ' °C';
+    document.getElementById('thermal_avg').textContent = frame.average_celsius.toFixed(2) + ' °C';
+    document.getElementById('thermal_range_min').textContent = frame.minimum_celsius.toFixed(1) + ' °C';
+    document.getElementById('thermal_range_max').textContent = frame.maximum_celsius.toFixed(1) + ' °C';
+    document.getElementById('thermal_sequence').textContent = frame.sequence;
+    document.getElementById('thermal_resolution').textContent = `${frame.width} × ${frame.height}`;
+    document.getElementById('thermal_fps').textContent = data.average_fps + ' FPS';
+    document.getElementById('thermal_age').textContent = frame.age_seconds + ' s';
+    document.getElementById('thermal_state').textContent = data.connected ? T().thermal_receiving : T().thermal_stale;
+  } catch (error) {
+    document.getElementById('thermal_state').textContent = T().thermal_unavailable + ': ' + error.message;
+  } finally {
+    setTimeout(loadThermal, 500);
+  }
+}
+
+// ============================================================
+// Start
+// ============================================================
+applyLang();
+loadVideoStatus();
+setInterval(loadVideoStatus, 1000);
 connectWS();
+loadThermal();
 </script>
 </body>
 </html>

@@ -103,14 +103,14 @@ def send_to_main(dp: DataPoint) -> None:
     elif q.label == "suspicious":
         logger.warning(
             f"可疑数据仍放行 | flags={q.flags} | temp={dp.data.get('temperature')} "
-            f"humi={dp.data.get('humidity')}"
+            f"voltage={dp.data.get('voltage')}"
         )
         _main_queue.append(dp)
 
     elif q.label == "anomaly":
         logger.error(
             f"异常数据已丢弃 | score={q.score:.2f} flags={q.flags} | "
-            f"temp={dp.data.get('temperature')} humi={dp.data.get('humidity')} "
+            f"temp={dp.data.get('temperature')} voltage={dp.data.get('voltage')} "
             f"details={q.details}"
         )
 
@@ -152,12 +152,12 @@ def make_quality_checker():
     quality checking when the model is missing or fails to load."""
     rule_checker = RuleBasedQualityChecker(
         temp_range=(-20.0, 85.0),
-        humi_range=(0.0, 100.0),
+        voltage_range=(0.0, 60.0),
         max_temp_delta=5.0,
-        max_humi_delta=10.0,
+        max_voltage_delta=3.0,
         freeze_window=8,
         freeze_temp_tol=0.2,
-        freeze_humi_tol=0.5,
+        freeze_voltage_tol=0.2,
         history_size=64,
     )
 

@@ -9,7 +9,7 @@
       "last",
       "delta"
     ],
-    "humidity": [
+    "voltage": [
       "mean",
       "std",
       "min",
@@ -39,18 +39,19 @@
     "anomaly_prob": 0.6
   },
   "test_metrics": {
-    "accuracy": 0.8606,
-    "roc_auc": 0.9252,
+    "accuracy": 0.8643,
+    "roc_auc": 0.9299,
     "confusion_matrix": [
       [
-        618,
-        117
+        631,
+        104
       ],
       [
-        260,
-        1709
+        263,
+        1706
       ]
     ]
   },
-  "trained_at": "2026-08-13 16:53:41"
+  "note": "保留的合成数据窗口模型（2026-09 决定）：搭接接头 V1 数据只有工艺参数、没有温度/电压时间序列，未用其重训。",
+  "trained_at": "2026-09-01 01:20:57"
 }

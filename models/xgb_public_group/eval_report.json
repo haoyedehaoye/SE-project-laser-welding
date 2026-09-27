@@ -1,93 +1,55 @@
 {
   "cv": {
     "folds": 5,
-    "accuracy_mean": 0.9835,
-    "accuracy_std": 0.0044,
-    "roc_auc_mean": 0.9989,
-    "roc_auc_std": 0.0005
+    "accuracy_mean": 0.9167,
+    "accuracy_std": 0.0196,
+    "roc_auc_mean": 0.9814,
+    "roc_auc_std": 0.0136
   },
   "holdout": {
-    "n": 400,
-    "pos_rate": 0.6575,
-    "accuracy": 0.9925,
-    "balanced_accuracy": 0.9925,
-    "roc_auc": 0.9994,
-    "pr_auc": 0.9997,
-    "brier": 0.0084,
-    "precision": 0.9962,
-    "recall": 0.9924,
-    "f1": 0.9943,
+    "n": 72,
+    "pos_rate": 0.1528,
+    "accuracy": 0.9306,
+    "balanced_accuracy": 0.959,
+    "roc_auc": 0.968,
+    "pr_auc": 0.7386,
+    "brier": 0.0529,
+    "precision": 0.6875,
+    "recall": 1.0,
+    "f1": 0.8148,
     "confusion_matrix": [
       [
-        136,
-        1
+        56,
+        5
       ],
       [
-        2,
-        261
+        0,
+        11
       ]
     ],
     "best_threshold_by_f1": {
-      "threshold": 0.4,
-      "f1": 0.9981
+      "threshold": 0.6,
+      "f1": 0.8148
     },
     "three_class": {
       "true=0": {
-        "normal": 131,
-        "suspicious": 5,
-        "anomaly": 1
+        "normal": 56,
+        "suspicious": 0,
+        "anomaly": 5
       },
       "true=1": {
         "normal": 0,
-        "suspicious": 4,
-        "anomaly": 259
+        "suspicious": 0,
+        "anomaly": 11
       }
     },
-    "per_task": {
-      "assemble": {
-        "n": 65,
-        "accuracy": 0.9846
-      },
-      "inspect": {
-        "n": 84,
-        "accuracy": 1.0
-      },
-      "pick": {
-        "n": 82,
-        "accuracy": 0.9878
-      },
-      "place": {
-        "n": 95,
-        "accuracy": 1.0
-      },
-      "weld": {
-        "n": 74,
-        "accuracy": 0.9865
-      }
-    },
-    "per_object": {
-      "bearing": {
-        "n": 88,
-        "accuracy": 1.0
-      },
-      "cylinder": {
-        "n": 75,
-        "accuracy": 0.9733
-      },
-      "gear": {
+    "per_weld": {
+      "2": {
         "n": 72,
-        "accuracy": 1.0
-      },
-      "panel": {
-        "n": 81,
-        "accuracy": 1.0
-      },
-      "valve": {
-        "n": 84,
-        "accuracy": 0.9881
+        "accuracy": 0.9306
       }
     }
   },
-  "split_mode": "by_run:run_id",
+  "split_mode": "by_weld:weld number",
   "model_dir": "D:\\SEproject\\AIFirst\\LaserWelding\\models\\xgb_public_group"
 }

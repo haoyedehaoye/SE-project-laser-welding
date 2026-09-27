@@ -1,0 +1,5 @@
+{
+  "model_type": "xgboost multi-output",
+  "note": "裂纹=XGBClassifier；几何=4×XGBRegressor；输入见 input_features.json",
+  "threshold": 0.5
+}

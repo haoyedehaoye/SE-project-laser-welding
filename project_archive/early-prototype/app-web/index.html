@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>工业相机监控</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Microsoft YaHei", system-ui, sans-serif; }
+    body { margin:0; background:#0b1220; color:#e5edf8; }
+    header { padding:20px 28px; border-bottom:1px solid #243247; background:#111a2b; }
+    h1 { font-size:20px; margin:0 0 6px; }
+    .sub { color:#8ea1ba; font-size:13px; }
+    main { display:grid; grid-template-columns:minmax(0,2fr) minmax(280px,1fr); gap:18px; padding:20px; }
+    .card { background:#111a2b; border:1px solid #243247; border-radius:12px; overflow:hidden; }
+    .card h2 { font-size:15px; margin:0; padding:14px 16px; border-bottom:1px solid #243247; }
+    .preview { min-height:420px; display:flex; align-items:center; justify-content:center; background:#05080e; }
+    .preview img { width:100%; height:auto; max-height:72vh; object-fit:contain; display:none; }
+    #placeholder { color:#7789a2; padding:24px; text-align:center; }
+    dl { display:grid; grid-template-columns:105px 1fr; gap:10px; margin:0; padding:16px; font-size:13px; }
+    dt { color:#8ea1ba; } dd { margin:0; overflow-wrap:anywhere; }
+    .badge { display:inline-block; padding:4px 9px; border-radius:999px; background:#344158; }
+    .ok { background:#123f34; color:#61d8aa; } .bad { background:#4d2028; color:#ff8797; }
+    .controls { display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 16px; }
+    button { padding:9px 13px; background:#2c65d8; color:white; border:0; border-radius:7px; cursor:pointer; }
+    button.stop { background:#a93a4a; }
+    button.secondary { background:#344158; }
+    button:disabled { cursor:not-allowed; opacity:.45; }
+    #action-message { min-height:20px; padding:0 16px 12px; color:#8ea1ba; font-size:13px; }
+    @media(max-width:850px){ main{grid-template-columns:1fr}.preview{min-height:260px} }
+  </style>
+</head>
+<body>
+  <header><h1>激光焊接设备监控系统</h1><div class="sub">第一版工业相机接入 · 不进行焊接状态或缺陷识别</div></header>
+  <main>
+    <section class="card"><h2>工业相机实时画面</h2><div class="preview"><div id="placeholder">正在等待相机画面…</div><img id="feed" alt="工业相机实时画面"></div></section>
+    <aside class="card">
+      <h2>相机连接与控制</h2>
+      <dl id="status"></dl>
+      <div class="controls">
+        <button id="start-camera">启动相机</button>
+        <button id="stop-camera" class="stop">停止相机</button>
+        <button id="discover" class="secondary">重新枚举</button>
+      </div>
+      <div id="action-message"></div>
+      <dl id="devices"></dl>
+    </aside>
+  </main>
+  <script>
+    const statusEl=document.getElementById('status'), devicesEl=document.getElementById('devices');
+    const feed=document.getElementById('feed'), placeholder=document.getElementById('placeholder');
+    const startButton=document.getElementById('start-camera'), stopButton=document.getElementById('stop-camera');
+    const actionMessage=document.getElementById('action-message');
+    let streamStarted=false;
+    const esc=v=>String(v??'-').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function rows(items){return items.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}
+    async function refresh(){
+      try{
+        const s=await fetch('/api/camera/status',{cache:'no-store'}).then(r=>r.json());
+        const d=s.details||{}, dev=d.device||{};
+        statusEl.innerHTML=rows([
+          ['状态',`<span class="badge ${s.connected?'ok':'bad'}">${esc(s.state)}</span>`],
+          ['信息',esc(s.message)],['型号',esc(dev.model)],['序列号',esc(dev.serial_number)],
+          ['IP',esc(dev.ip_address)],['分辨率',d.width?`${d.width} × ${d.height}`:'-'],
+          ['接收帧数',esc(d.frames_received)],['平均帧率',esc(d.average_fps)],['最近错误',esc(d.last_error)]
+        ]);
+        const requestedOn=Boolean(d.requested_on);
+        startButton.disabled=requestedOn;
+        stopButton.disabled=!requestedOn;
+        if(s.connected&&!streamStarted){feed.src='/api/camera/stream?t='+Date.now();streamStarted=true}
+        if(!requestedOn){
+          feed.removeAttribute('src'); streamStarted=false;
+          placeholder.textContent='相机已停止';
+        }else if(!s.connected){placeholder.textContent=s.message||'正在等待相机画面…'}
+        feed.style.display=s.connected?'block':'none'; placeholder.style.display=s.connected?'none':'block';
+      }catch(e){placeholder.textContent='后端服务不可用';}
+    }
+    async function controlCamera(action){
+      startButton.disabled=true; stopButton.disabled=true;
+      actionMessage.textContent=action==='start'?'正在启动相机…':'正在停止相机…';
+      try{
+        const r=await fetch(`/api/camera/${action}`,{method:'POST'}), s=await r.json();
+        if(!r.ok) throw new Error(s.detail||s.error||'操作失败');
+        actionMessage.textContent=s.message||'操作完成';
+      }catch(e){actionMessage.textContent=`操作失败：${e.message}`}
+      await refresh();
+    }
+    async function discover(){
+      devicesEl.innerHTML=rows([['枚举状态','正在查询…']]);
+      try{const r=await fetch('/api/camera/devices',{cache:'no-store'}), x=await r.json();
+        if(!r.ok) throw new Error(x.error||'枚举失败');
+        devicesEl.innerHTML=x.devices.length?x.devices.map((d,i)=>rows([[`相机 ${i+1}`,esc(`${d.model} / ${d.serial_number} / ${d.ip_address||'-'}`)]])).join(''):rows([['结果','没有发现相机']]);
+      }catch(e){devicesEl.innerHTML=rows([['错误',esc(e.message)]]);}
+    }
+    feed.onerror=()=>{feed.style.display='none';placeholder.style.display='block';placeholder.textContent='视频流暂时不可用';streamStarted=false};
+    startButton.onclick=()=>controlCamera('start');
+    stopButton.onclick=()=>controlCamera('stop');
+    document.getElementById('discover').onclick=discover;
+    refresh(); setInterval(refresh,1000);
+  </script>
+</body>
+</html>

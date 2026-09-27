@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>焊接质量预测 · 工艺 → 裂纹 + 几何</title>
+<style>
+  body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0;
+         background: #10161f; color: #dfe6ee; }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 20px; } h2 { font-size: 15px; margin: 22px 0 8px; color: #8fd0ff; }
+  .card { background: #182230; border: 1px solid #2a3a4d; border-radius: 10px;
+          padding: 16px; margin-top: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  label { display: block; font-size: 12px; color: #9fb0c3; margin-bottom: 4px; }
+  input { width: 100%; box-sizing: border-box; padding: 7px 9px; border-radius: 6px;
+          border: 1px solid #33475f; background: #0f1722; color: #e6edf5; font-size: 14px; }
+  button { margin-top: 14px; padding: 9px 20px; border: 0; border-radius: 7px;
+           background: #2f7fe0; color: #fff; font-size: 14px; cursor: pointer; }
+  button.secondary { background: #3f4f62; margin-left: 10px; }
+  button:disabled { opacity: .55; cursor: wait; }
+  .muted { color: #9fb0c3; font-size: 12px; }
+  .kpi { font-size: 15px; margin: 6px 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 22px; }
+  table { border-collapse: collapse; font-size: 14px; margin-top: 6px; }
+  td, th { padding: 6px 12px; border-bottom: 1px solid #2a3a4d; text-align: left; }
+  .warn { color: #f0b061; } .err { color: #ff7b72; white-space: pre-wrap; }
+  .note { color: #7fd0a0; }
+  #answer { white-space: pre-wrap; font-size: 14px; line-height: 1.7; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 64px; border-radius: 7px;
+             border: 1px solid #33475f; background: #0f1722; color: #e6edf5;
+             padding: 8px; font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>焊接质量预测（V1 真实数据：工艺 → 裂纹 + 几何）</h1>
+  <p class="muted">模型：Definitive screening steel-copper lap joints V1（360 行、5 道焊缝）。
+     裂纹为二分类、几何量为回归；评估按焊缝分组。结果仅作工程参考。</p>
+
+  <div class="card">
+    <h2>工艺参数</h2>
+    <div class="grid">
+      <div><label>功率 (W)</label><input id="power" type="number" step="10" value="1050"></div>
+      <div><label>焊接速度 (m/min)</label><input id="speed" type="number" step="0.05" value="1.0"></div>
+      <div><label>气流量 (l/min)</label><input id="gas" type="number" step="0.5" value="15"></div>
+      <div><label>焦点位置 (mm)</label><input id="focal" type="number" step="0.5" value="0"></div>
+      <div><label>角度 (°)</label><input id="angular" type="number" step="0.5" value="0"></div>
+      <div><label>板厚 (mm)</label><input id="thickness" type="number" step="0.05" value="0.6"></div>
+      <div><label>横截面位置 (mm)</label><input id="pos" type="number" step="1" value="8"></div>
+    </div>
+    <button id="predictBtn" onclick="predict()">开始预测</button>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <h2>预测结果</h2>
+    <div class="kpi" id="crackKpi"></div>
+    <div class="row">
+      <div><h2>几何量预测</h2>
+        <table><tbody id="geoBody"></tbody></table>
+      </div>
+    </div>
+    <div class="note" id="warnBox"></div>
+    <div class="err" id="errBox"></div>
+  </div>
+
+  <div class="card" id="qaCard" style="display:none">
+    <h2>AI 解释（可选）</h2>
+    <textarea id="question" placeholder="可选：针对该预测提问，例如「这个参数下铜侧熔深是否偏小？应如何调整？」"></textarea>
+    <button class="secondary" id="askBtn" onclick="ask()">让 AI 解释</button>
+    <div id="answer"></div>
+    <div class="err" id="qaErr"></div>
+  </div>
+  <p class="muted"><a href="/" style="color:#8fd0ff">← 返回实时监控</a></p>
+</main>
+
+<script>
+function readParams() {
+  const map = {
+    power: 'power', speed: 'speed', gas: 'gas_flow', focal: 'focal',
+    angular: 'angular', thickness: 'thickness', pos: 'cross_section_mm'
+  };
+  const body = {};
+  for (const id in map) {
+    const v = parseFloat(document.getElementById(id).value);
+    if (!isFinite(v)) throw new Error('参数 ' + id + ' 不是有效数字');
+    body[map[id]] = v;
+  }
+  return body;
+}
+
+function show(errId, ok) {
+  document.getElementById(errId).textContent = ok ? '' : '请求失败，请确认服务运行中';
+}
+
+async function predict() {
+  const btn = document.getElementById('predictBtn');
+  btn.disabled = true;
+  document.getElementById('errBox').textContent = '';
+  try {
+    const params = readParams();
+    const resp = await fetch('/api/predict_quality', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(params)
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      document.getElementById('errBox').textContent = data.error || ('HTTP ' + resp.status);
+      return;
+    }
+    const risk = data.risk_level || (data.crack_probability >= 0.5 ? '高' : '低');
+    document.getElementById('crackKpi').textContent =
+      '裂纹概率：' + (data.crack_probability * 100).toFixed(1) + '%　判定：' +
+      data.crack_label + '（风险：' + risk + '）';
+    const geo = data.geometry || {};
+    const rows = [
+      ['钢侧熔宽 (µm)', geo.steel_w], ['铜侧熔宽 (µm)', geo.copper_w],
+      ['铜侧熔深 (µm)', geo.copper_d], ['间隙 (µm)', geo.gap]
+    ];
+    const body = document.getElementById('geoBody');
+    body.textContent = '';
+    for (const [k, v] of rows) {
+      const tr = document.createElement('tr');
+      const td1 = document.createElement('td'); td1.textContent = k;
+      const td2 = document.createElement('td'); td2.textContent = (v === undefined || v === null) ? '—' : Number(v).toFixed(1);
+      tr.appendChild(td1); tr.appendChild(td2); body.appendChild(tr);
+    }
+    document.getElementById('warnBox').textContent =
+      (data.warnings && data.warnings.length) ? ('注意：' + data.warnings.join('；')) : '';
+    document.getElementById('resultCard').style.display = '';
+    document.getElementById('qaCard').style.display = '';
+    document.getElementById('qaErr').textContent = '';
+    document.getElementById('answer').textContent = '';
+  } catch (e) {
+    document.getElementById('errBox').textContent = '请求失败：' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function ask() {
+  const btn = document.getElementById('askBtn');
+  btn.disabled = true;
+  document.getElementById('qaErr').textContent = '';
+  document.getElementById('answer').textContent = 'AI 思考中…';
+  try {
+    const params = readParams();
+    params.question = document.getElementById('question').value;
+    const resp = await fetch('/api/quality/ask', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(params)
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      document.getElementById('answer').textContent = '';
+      document.getElementById('qaErr').textContent = data.error || ('HTTP ' + resp.status);
+      return;
+    }
+    document.getElementById('answer').textContent = data.answer;
+  } catch (e) {
+    document.getElementById('qaErr').textContent = '请求失败：' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

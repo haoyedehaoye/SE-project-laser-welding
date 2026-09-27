@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>激光焊接问答</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#c9d1d9; --muted:#8b949e; --blue:#58a6ff; }
+  * { margin:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif; padding:16px; }
+  .wrap { max-width:860px; margin:0 auto; }
+  h1 { font-size:20px; margin-bottom:4px; }
+  .sub { color:var(--muted); font-size:12px; margin-bottom:16px; }
+  #log { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; height:420px; overflow-y:auto; margin-bottom:12px; }
+  .msg { margin-bottom:12px; }
+  .msg .role { font-size:11px; color:var(--muted); margin-bottom:2px; }
+  .msg.user .role { color:var(--blue); }
+  .msg .body { white-space:pre-wrap; font-size:14px; line-height:1.6; }
+  .controls { display:flex; gap:8px; align-items:center; }
+  #q { flex:1; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:14px; resize:none; }
+  button { padding:10px 18px; border:none; border-radius:8px; background:var(--blue); color:#fff; font-size:14px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  #file { color:var(--muted); font-size:12px; }
+  #status { color:var(--muted); font-size:12px; margin-left:10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔬 激光焊接问答（多模态）</h1>
+  <div class="sub">可提问工艺、缺陷、质量与维护问题；支持上传焊接图像让模型看图回答。</div>
+  <div id="log">
+    <div class="msg"><div class="role">系统</div><div class="body">你好，我是激光焊接问答助手。输入问题，或上传图像后提问（Ctrl+Enter 发送）。</div></div>
+  </div>
+  <div class="controls">
+    <textarea id="q" rows="2" placeholder="例如：激光焊接为什么会产生气孔？"></textarea>
+    <button id="send">发送</button>
+  </div>
+  <div style="margin-top:8px;">
+    <input type="file" id="file" accept="image/*">
+    <span id="status"></span>
+  </div>
+</div>
+<script>
+const logEl = document.getElementById('log');
+const qEl = document.getElementById('q');
+const btn = document.getElementById('send');
+const fileEl = document.getElementById('file');
+const statusEl = document.getElementById('status');
+let imageBase64 = null;
+
+fileEl.addEventListener('change', () => {
+  const f = fileEl.files[0];
+  if (!f) { imageBase64 = null; statusEl.textContent = ''; return; }
+  const reader = new FileReader();
+  reader.onload = () => { imageBase64 = reader.result; statusEl.textContent = '已附加图片: ' + f.name; };
+  reader.readAsDataURL(f);
+});
+
+function addMsg(role, text) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  d.innerHTML = '<div class="role">' + (role === 'user' ? '你' : '助手') + '</div><div class="body"></div>';
+  d.querySelector('.body').textContent = text;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+  return d;
+}
+
+async function send() {
+  const question = qEl.value.trim();
+  if (!question) return;
+  addMsg('user', question + (imageBase64 ? '\n[已附带图片]' : ''));
+  qEl.value = '';
+  btn.disabled = true;
+  const d = addMsg('assistant', '思考中…');
+  try {
+    const resp = await fetch('/api/qa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, image_base64: imageBase64 }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+    d.querySelector('.body').textContent = data.answer;
+  } catch (e) {
+    d.querySelector('.body').textContent = '请求失败: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    imageBase64 = null;
+    fileEl.value = '';
+    statusEl.textContent = '';
+  }
+}
+
+btn.addEventListener('click', send);
+qEl.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) send(); });
+</script>
+</body>
+</html>
